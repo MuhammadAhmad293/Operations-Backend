@@ -3,6 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# Plan files
+.plan/
+
 # dotenv files
 .env
 

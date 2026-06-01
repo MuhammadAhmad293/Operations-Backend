@@ -19,37 +19,37 @@ namespace Operations.Repositories.Context
                         new MailStatus
                         {
                             MailStatusId = (int)MailStatusEnum.New,
-                            ArName = MailStatusEnum.New.GetDisplayName(),
-                            EnName = MailStatusEnum.New.GetDisplayShortName(),
-                            ArDescription = MailStatusEnum.New.GetDisplayName(),
-                            EnDescription = MailStatusEnum.New.GetDisplayShortName(),
+                            ArName = "جديد",
+                            EnName = "New",
+                            ArDescription = "جديد",
+                            EnDescription = "New",
                             CreationTime = new DateTime(2023, 01, 1)
                         },
                         new MailStatus
                         {
                             MailStatusId = (int)MailStatusEnum.Sent,
-                            ArName = MailStatusEnum.Sent.GetDisplayName(),
-                            EnName = MailStatusEnum.Sent.GetDisplayShortName(),
-                            ArDescription = MailStatusEnum.Sent.GetDisplayName(),
-                            EnDescription = MailStatusEnum.Sent.GetDisplayShortName(),
+                            ArName = "تم الإرسال",
+                            EnName = "Sent",
+                            ArDescription = "تم الإرسال",
+                            EnDescription = "Sent",
                             CreationTime = new DateTime(2023, 01, 1)
                         },
                         new MailStatus
                         {
                             MailStatusId = (int)MailStatusEnum.Processing,
-                            ArName = MailStatusEnum.Processing.GetDisplayName(),
-                            EnName = MailStatusEnum.Processing.GetDisplayShortName(),
-                            ArDescription = MailStatusEnum.Processing.GetDisplayName(),
-                            EnDescription = MailStatusEnum.Processing.GetDisplayShortName(),
+                            ArName = "معالجة",
+                            EnName = "Processing",
+                            ArDescription = "معالجة",
+                            EnDescription = "Processing",
                             CreationTime = new DateTime(2023, 01, 1)
                         },
                         new MailStatus
                         {
                             MailStatusId = (int)MailStatusEnum.Failed,
-                            ArName = MailStatusEnum.Failed.GetDisplayName(),
-                            EnName = MailStatusEnum.Failed.GetDisplayShortName(),
-                            ArDescription = MailStatusEnum.Failed.GetDisplayName(),
-                            EnDescription = MailStatusEnum.Failed.GetDisplayShortName(),
+                            ArName = "فشل",
+                            EnName = "Failed",
+                            ArDescription = "فشل",
+                            EnDescription = "Failed",
                             CreationTime = new DateTime(2023, 01, 1)
                         });
             #endregion
@@ -60,28 +60,28 @@ namespace Operations.Repositories.Context
                        new MailType
                        {
                            MailTypeId = (int)MailTypeEnum.ForgetPassword,
-                           ArName = MailTypeEnum.ForgetPassword.GetDisplayName(),
-                           EnName = MailTypeEnum.ForgetPassword.GetDisplayShortName(),
-                           ArDescription = MailTypeEnum.ForgetPassword.GetDisplayName(),
-                           EnDescription = MailTypeEnum.ForgetPassword.GetDisplayShortName(),
+                           ArName = "نسيان كلمة السر",
+                           EnName = "Forget Password",
+                           ArDescription = "نسيان كلمة السر",
+                           EnDescription = "Forget Password",
                            CreationTime = new DateTime(2023, 01, 1)
                        },
                        new MailType
                        {
                            MailTypeId = (int)MailTypeEnum.WelcomeMail,
-                           ArName = MailTypeEnum.WelcomeMail.GetDisplayName(),
-                           EnName = MailTypeEnum.WelcomeMail.GetDisplayShortName(),
-                           ArDescription = MailTypeEnum.WelcomeMail.GetDisplayName(),
-                           EnDescription = MailTypeEnum.WelcomeMail.GetDisplayShortName(),
+                           ArName = "بريد الترحيب",
+                           EnName = "Welcome Mail",
+                           ArDescription = "بريد الترحيب",
+                           EnDescription = "Welcome Mail",
                            CreationTime = new DateTime(2023, 01, 1)
                        },
                        new MailType
                        {
                            MailTypeId = (int)MailTypeEnum.VerificationMail,
-                           ArName = MailTypeEnum.VerificationMail.GetDisplayName(),
-                           EnName = MailTypeEnum.VerificationMail.GetDisplayShortName(),
-                           ArDescription = MailTypeEnum.VerificationMail.GetDisplayName(),
-                           EnDescription = MailTypeEnum.VerificationMail.GetDisplayShortName(),
+                           ArName = "بريد التحقق",
+                           EnName = "Verification Mail",
+                           ArDescription = "بريد التحقق",
+                           EnDescription = "Verification Mail",
                            CreationTime = new DateTime(2023, 01, 1),
                        }
                        );

@@ -22,7 +22,6 @@ static AppDbContext CreateDbContext()
 
     var builder = new DbContextOptionsBuilder<AppDbContext>();
     var connectionString = configuration.GetConnectionString("DBConString");
-    new DbContextOptionsBuilder<AppDbContext>().UseSqlServer(configuration.GetConnectionString("DBConString"));
-
+    builder.UseSqlServer(connectionString);
     return new AppDbContext(builder.Options);
 }

@@ -4,7 +4,7 @@ using Common.Notification.Mail;
 using Common.Validator;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+
 
 namespace Common.Resolver
 {

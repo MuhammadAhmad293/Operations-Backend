@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Operations.Repositories.Context;
 
@@ -11,9 +12,11 @@ using Operations.Repositories.Context;
 namespace Operations.Repositories.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317201611_FixDefaultValues")]
+    partial class FixDefaultValues
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -45,7 +48,7 @@ namespace Operations.Repositories.Migrations
                     b.Property<DateTime>("CreationTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValue(new DateTime(2026, 3, 17, 23, 16, 11, 247, DateTimeKind.Local).AddTicks(5754));
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -59,7 +62,7 @@ namespace Operations.Repositories.Migrations
                     b.Property<DateTime>("LastModificationTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValue(new DateTime(2026, 3, 17, 23, 16, 11, 247, DateTimeKind.Local).AddTicks(6132));
 
                     b.Property<int>("MailStatusId")
                         .HasColumnType("int");
@@ -107,7 +110,7 @@ namespace Operations.Repositories.Migrations
                     b.Property<DateTime>("CreationTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValue(new DateTime(2026, 3, 17, 23, 16, 11, 243, DateTimeKind.Local).AddTicks(900));
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -117,7 +120,7 @@ namespace Operations.Repositories.Migrations
                     b.Property<DateTime>("LastModificationTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValue(new DateTime(2026, 3, 17, 23, 16, 11, 246, DateTimeKind.Local).AddTicks(8249));
 
                     b.Property<int>("MailId")
                         .HasColumnType("int");
@@ -148,7 +151,7 @@ namespace Operations.Repositories.Migrations
                     b.Property<DateTime>("CreationTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValue(new DateTime(2026, 3, 17, 23, 16, 11, 247, DateTimeKind.Local).AddTicks(9944));
 
                     b.Property<string>("EnDescription")
                         .IsRequired()
@@ -166,7 +169,7 @@ namespace Operations.Repositories.Migrations
                     b.Property<DateTime>("LastModificationTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValue(new DateTime(2026, 3, 17, 23, 16, 11, 248, DateTimeKind.Local).AddTicks(241));
 
                     b.HasKey("MailStatusId");
 
@@ -238,7 +241,7 @@ namespace Operations.Repositories.Migrations
                     b.Property<DateTime>("CreationTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValue(new DateTime(2026, 3, 17, 23, 16, 11, 248, DateTimeKind.Local).AddTicks(3730));
 
                     b.Property<string>("EnDescription")
                         .IsRequired()
@@ -256,7 +259,7 @@ namespace Operations.Repositories.Migrations
                     b.Property<DateTime>("LastModificationTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValue(new DateTime(2026, 3, 17, 23, 16, 11, 248, DateTimeKind.Local).AddTicks(4022));
 
                     b.HasKey("MailTypeId");
 
@@ -309,7 +312,7 @@ namespace Operations.Repositories.Migrations
                     b.Property<DateTime>("CreationTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValue(new DateTime(2026, 3, 17, 23, 16, 11, 248, DateTimeKind.Local).AddTicks(7455));
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -327,7 +330,7 @@ namespace Operations.Repositories.Migrations
                     b.Property<DateTime>("LastModificationTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValue(new DateTime(2026, 3, 17, 23, 16, 11, 248, DateTimeKind.Local).AddTicks(7769));
 
                     b.Property<string>("LastName")
                         .IsRequired()

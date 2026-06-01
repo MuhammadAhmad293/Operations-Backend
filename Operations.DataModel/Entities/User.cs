@@ -1,6 +1,8 @@
-﻿namespace Operations.DataModel.Entities
+﻿using Operations.DataModel.Base;
+
+namespace Operations.DataModel.Entities
 {
-    public class User
+    public class User : BaseEntity
     {
         public int Id { get; set; }
         public string FirstName { get; set; }
