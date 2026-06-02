@@ -1,0 +1,165 @@
+{
+  "api-controllers": [
+    "Operations/Controllers/UserController.cs",
+    "Operations/Controllers/JobTestController.cs"
+  ],
+  "middleware": [
+    "Operations/ErrorHandlingMiddleware.cs"
+  ],
+  "swagger-filters": [
+    "Operations/Filter/SwaggerHeaderFilter.cs"
+  ],
+  "program-entry": [
+    "Operations/Program.cs"
+  ],
+  "app-settings": [
+    "Operations/appsettings.json",
+    "Operations/appsettings.Development.json",
+    "Operations/Properties/launchSettings.json",
+    "EFCoreMigrationExcution/appsettings.json"
+  ],
+  "entities": [
+    "Operations.DataModel/Entities/User.cs",
+    "Operations.DataModel/Entities/Mail.cs",
+    "Operations.DataModel/Entities/MailAttachment.cs",
+    "Operations.DataModel/Entities/MailStatus.cs",
+    "Operations.DataModel/Entities/MailType.cs"
+  ],
+  "base-entities": [
+    "Operations.DataModel/Base/BaseEntity.cs",
+    "Operations.DataModel/Base/BaseMultilingualTextEntity.cs"
+  ],
+  "dtos": [
+    "Operations.Dto/DTOs/UserDto.cs",
+    "Common/Dto/ResponseDto.cs",
+    "Common/Dto/EmptyResponseDto.cs",
+    "Common/Dto/PaginationRequestDto.cs",
+    "Common/Dto/PaginationResponseDto.cs",
+    "Common/Dto/TextValueResponseDto.cs",
+    "Common/Notification/Mail/MailDto.cs",
+    "Common/Notification/Mail/MailSettingDto.cs",
+    "Operations.Services/Localization/LocalizationFileReader/LocalizationFileDataDto.cs"
+  ],
+  "enums": [
+    "Common/Enums/ResponseStatus.cs",
+    "Common/Enums/MailStatusEnum.cs",
+    "Common/Enums/MailTypeEnum.cs",
+    "Common/Enums/SortDirection.cs"
+  ],
+  "service-interfaces": [
+    "Operations.IServices/IService/IUserService.cs",
+    "Operations.IServices/IJob/IJobService.cs"
+  ],
+  "services": [
+    "Operations.Services/UserService/UserService.cs",
+    "Operations.Services/Job/JobService.cs"
+  ],
+  "base-services": [
+    "Operations.Services/Base/BaseService.cs"
+  ],
+  "repository-interfaces": [
+    "Operations.IRepositories/IRepository/IUserRepository.cs",
+    "Operations.IRepositories/IRepository/IMailRepository.cs",
+    "Operations.IRepositories/Base/IBaseRepository.cs"
+  ],
+  "repositories": [
+    "Operations.Repositories/Repository/UserRepository.cs",
+    "Operations.Repositories/Repository/MailRepository.cs"
+  ],
+  "base-repositories": [
+    "Operations.Repositories/Base/BaseRepository.cs"
+  ],
+  "unit-of-work": [
+    "Operations.IRepositories/UnitOfWork/IUnitOfWork.cs",
+    "Operations.Repositories/UnitOfWork/UnitOfWork.cs"
+  ],
+  "db-context": [
+    "Operations.Repositories/Context/AppDbContext.cs",
+    "Operations.Repositories/Context/InitialDataSeeding.cs"
+  ],
+  "entity-configurations": [
+    "Operations.Repositories/EntityConfiguration/UserConfiguration.cs",
+    "Operations.Repositories/EntityConfiguration/MailConfiguration.cs",
+    "Operations.Repositories/EntityConfiguration/MailAttachmentConfiguration.cs",
+    "Operations.Repositories/EntityConfiguration/MailStatusConfiguration.cs",
+    "Operations.Repositories/EntityConfiguration/MailTypeConfiguration.cs"
+  ],
+  "ef-migrations": [
+    "Operations.Repositories/Migrations/20230217215228_initialEntities.cs",
+    "Operations.Repositories/Migrations/20230217215228_initialEntities.Designer.cs",
+    "Operations.Repositories/Migrations/20230624165515_AddMailEntity.cs",
+    "Operations.Repositories/Migrations/20230624165515_AddMailEntity.Designer.cs",
+    "Operations.Repositories/Migrations/20260317201611_FixDefaultValues.cs",
+    "Operations.Repositories/Migrations/20260317201611_FixDefaultValues.Designer.cs",
+    "Operations.Repositories/Migrations/20260601204345_UseGetDateSqlDefault.cs",
+    "Operations.Repositories/Migrations/20260601204345_UseGetDateSqlDefault.Designer.cs",
+    "Operations.Repositories/Migrations/AppDbContextModelSnapshot.cs"
+  ],
+  "mappers": [
+    "Operations.Services/Mapper/UserMapper.cs"
+  ],
+  "localization": [
+    "Operations.Services/Localization/ILocalizationService.cs",
+    "Operations.Services/Localization/LocalizationService.cs",
+    "Operations.Services/Localization/LocalizationFileReader/LocalizationFileReader.cs",
+    "Operations.Services/Localization/LocalizationFileReader/LocalizationFileDataDto.cs",
+    "Operations.Services/Localization/LocalizationFileReader/localizationFile.json"
+  ],
+  "custom-exceptions": [
+    "Operations.Services/CustomExceptions/InvalidRequestException.cs",
+    "Operations.Services/CustomExceptions/NameRequiredException.cs",
+    "Operations.Services/CustomExceptions/ObjectNotFoundException.cs"
+  ],
+  "ioc-resolvers": [
+    "Operations.Services/Resolver/CoreServicesResolver.cs",
+    "Operations.Repositories/Resolver/UnitOfWorkResolver.cs",
+    "Common/Resolver/CommonResolver.cs",
+    "Operations.Ioc/IocManager.cs"
+  ],
+  "settings-models": [
+    "Operations.Services/Setting/MailSettings.cs",
+    "Common/Notification/Mail/MailSetting.cs"
+  ],
+  "common-utilities": [
+    "Common/PasswordHash/PasswordHash.cs",
+    "Common/PasswordHash/IPasswordHash.cs",
+    "Common/FileHelper/FileHelper.cs",
+    "Common/FileHelper/IFileHelper.cs",
+    "Common/HttpClientHelpers/HttpClientHelper.cs",
+    "Common/HttpClientHelpers/IHttpClientHelper.cs",
+    "Common/Validator/ValidatorHelper.cs",
+    "Common/Validator/IValidatorHelper.cs",
+    "Common/ExtensionMethods/EnumExtensions.cs"
+  ],
+  "notification": [
+    "Common/Notification/Mail/MailSender.cs",
+    "Common/Notification/Mail/IMailSender.cs",
+    "Common/Notification/Mail/MailDto.cs",
+    "Common/Notification/Mail/MailSetting.cs",
+    "Common/Notification/Mail/MailSettingDto.cs"
+  ],
+  "lazy-loading-helpers": [
+    "Operations.Repositories/Lazier.cs"
+  ],
+  "migration-runner": [
+    "EFCoreMigrationExcution/Program.cs",
+    "EFCoreMigrationExcution/EFCoreMigrationExcution.csproj"
+  ],
+  "project-files": [
+    "Operations/Operations.csproj",
+    "Operations.Services/Operations.Services.csproj",
+    "Operations.Repositories/Operations.Repositories.csproj",
+    "Operations.DataModel/Operations.DataModel.csproj",
+    "Operations.Dto/Operations.Dto.csproj",
+    "Operations.IServices/Operations.IServices.csproj",
+    "Operations.IRepositories/Operations.IRepositories.csproj",
+    "Operations.Ioc/Operations.Ioc.csproj",
+    "Common/Common.csproj",
+    "Operations.sln"
+  ],
+  "documentation": [
+    "README.md",
+    "REPOSITORY_GUIDE.md",
+    "AGENTS.md"
+  ]
+}
