@@ -1,4 +1,4 @@
-﻿using Microsoft.OpenApi.Models;
+﻿using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace Operations.Filter
@@ -8,7 +8,7 @@ namespace Operations.Filter
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
             if (operation.Parameters is null)
-                operation.Parameters = new List<OpenApiParameter>();
+                operation.Parameters = new OpenApiParameter[0];
 
             operation.Parameters.Add(new OpenApiParameter
             {
@@ -16,7 +16,7 @@ namespace Operations.Filter
                 In = ParameterLocation.Header,
                 Schema = new OpenApiSchema
                 {
-                    Type = "string"
+                    Type = JsonSchemaType.String,
                 }
             });
         }

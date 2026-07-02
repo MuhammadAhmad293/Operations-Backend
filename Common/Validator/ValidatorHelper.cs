@@ -34,10 +34,27 @@ namespace Common.Validator
             bool result = default;
             Match? match = Regex.Match(mail, MailSetting.MailValidationRegex, RegexOptions.IgnoreCase);
             if (match.Success)
-                result = true;            
-            else            
-                Logger.LogError($"Invalid mail {mail}", "ValidateMail");            
+                result = true;
+            else
+                Logger.LogError($"Invalid mail {mail}", "ValidateMail");
             return result;
         }
+
+        public (bool IsValid, string ErrorMessage) ValidatePasswordPolicy(string password)
+        {
+            if (string.IsNullOrEmpty(password) || password.Length < 8)
+                return (false, "Password must be at least 8 characters long");
+            if (!password.Any(char.IsUpper))
+                return (false, "Password must contain at least one uppercase letter");
+            if (!password.Any(char.IsLower))
+                return (false, "Password must contain at least one lowercase letter");
+            if (!password.Any(char.IsDigit))
+                return (false, "Password must contain at least one digit");
+            if (!password.Any(c => SpecialChars.Contains(c)))
+                return (false, "Password must contain at least one special character");
+            return (true, null);
+        }
+
+        private const string SpecialChars = "!@#$%^&*()_+-=[]{}|;':\",./<>?";
     }
 }

@@ -17,7 +17,7 @@ namespace Common.Notification.Mail
             ValidatorHelper = validatorHelper;
         }
 
-        public async Task<bool> SendMail(MailDto mailDto, MailSettingDto settingDto)
+        public async Task<bool> SendMail(MailDto mailDto, MailSettingDto settingDto, CancellationToken cancellationToken = default)
         {
             bool result = default;
             Logger.LogInformation($"Start handel mail with ID:{mailDto.Id}.", "SendMail");
@@ -48,16 +48,18 @@ namespace Common.Notification.Mail
                     if (mailDto.Attachment?.Count > default(int))
                         mailDto.Attachment.ForEach(att => mailMessage.Attachments.Add(new Attachment(att)));
 
-                    SmtpClient mailClient = new(settingDto.SmtpServer, settingDto.EmailSmtpPort)
+                    SmtpClient mailClient = new(settingDto.SmtpServer)
                     {
+                        Port = settingDto.EmailSmtpPort,
+                        EnableSsl = true,                        
                         DeliveryMethod = SmtpDeliveryMethod.Network,
-                        Credentials = new NetworkCredential(settingDto.Username, settingDto.Password),
-                        Timeout = settingDto.SmtpTimeOut,
+                        UseDefaultCredentials = false
                     };
+                    mailClient.Credentials = new NetworkCredential(settingDto.Username, settingDto.Password);
                     try
                     {
                         Logger.LogInformation($"Start send mail with ID:{mailDto.Id} with mail client.", "SendMail");
-                        mailClient.Send(mailMessage);
+                        await mailClient.SendMailAsync(mailMessage, cancellationToken);
                         result = true;
                     }
                     catch (Exception exception)

@@ -11,6 +11,9 @@ namespace Operations.Repositories.EntityConfiguration
             builder.Property(e => e.CreationTime).HasDefaultValueSql("GETDATE()");
             builder.Property(e => e.LastModificationTime).HasDefaultValueSql("GETDATE()");
             builder.Property(e => e.IsDeleted).HasDefaultValue(false);
+
+            builder.HasIndex(u => u.Email).IsUnique();
+            builder.HasIndex(u => u.UserName).IsUnique();
         }
     }
 }

@@ -13,9 +13,15 @@ using Operations.Services.Setting;
 using Hangfire;
 using Mapster;
 using MapsterMapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using System.Globalization;
 using System.Reflection;
 using System.Security.Claims;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Identity;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +32,7 @@ CoreServicesResolver.ResolveMapper(builder.Services);
 CommonResolver.ResolveCommonServices(builder.Services, builder.Configuration);
 UnitOfWorkResolver.ResolveUintOfWork(builder.Services, builder.Configuration);
 UnitOfWorkResolver.ResolveLazier(builder.Services, builder.Configuration);
+
 // Bind Unit Setting
 MailSettings MailSetting = new();
 builder.Configuration.Bind("MailSetting", MailSetting);
@@ -41,6 +48,58 @@ builder.Services.AddTransient(s =>
     IHttpContextAccessor contextAccessor = s.GetService<IHttpContextAccessor>();
     ClaimsPrincipal user = contextAccessor?.HttpContext?.User;
     return user;
+});
+
+// Bind JWT settings (secret sourced from user-secrets / env var — not appsettings.json)
+JwtSettings jwtSettings = new();
+builder.Configuration.Bind("JwtSettings", jwtSettings);
+if (string.IsNullOrWhiteSpace(jwtSettings.Secret))
+    throw new InvalidOperationException(
+        "JwtSettings:Secret is not configured. " +
+        "Set it via 'dotnet user-secrets' (dev) or the JwtSettings__Secret environment variable (prod).");
+builder.Services.AddSingleton(jwtSettings);
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+builder.Services.AddRateLimiter(options =>
+{
+    // 5 req/min per IP — register, forgot-password, reset-password
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 5,
+                QueueLimit = 0
+            }));
+
+    // 10 req/min per IP — login
+    options.AddPolicy("auth-login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 10,
+                QueueLimit = 0
+            }));
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
 builder.Services.AddControllers();
@@ -84,7 +143,9 @@ app.UseHttpsRedirection();//
 
 app.UseMiddleware(typeof(ErrorHandlingMiddleware));
 
-app.UseAuthorization();//
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
 #region Localization
 List<CultureInfo> cultures = new()

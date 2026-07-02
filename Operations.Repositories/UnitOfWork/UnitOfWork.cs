@@ -11,7 +11,7 @@ namespace Operations.Repositories.UnitOfWork
         public UnitOfWork(Lazy<AppDbContext> appDbContext) => AppDbContext = appDbContext;
 
         #region Main Methods Implementation
-        public Task<int> CommitAsync() => AppDbContext.Value.SaveChangesAsync();
+        public Task<int> CommitAsync(CancellationToken cancellationToken = default) => AppDbContext.Value.SaveChangesAsync(cancellationToken);
 
         public void Dispose()
         {
@@ -22,6 +22,7 @@ namespace Operations.Repositories.UnitOfWork
         #region Repository Implementation
         public IUserRepository UserRepository => new UserRepository(AppDbContext);
         public IMailRepository MailRepository => new MailRepository(AppDbContext);
+        public IPasswordResetTokenRepository PasswordResetTokenRepository => new PasswordResetTokenRepository(AppDbContext);
         #endregion
 
     }

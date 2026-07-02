@@ -1,9 +1,11 @@
-﻿using Operations.Dto.DTOs;
-using Operations.IServices.IService;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Operations.Dto.DTOs;
+using Operations.IServices.IService;
 
 namespace Operations.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class UserController : ControllerBase

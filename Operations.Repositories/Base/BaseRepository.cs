@@ -12,7 +12,7 @@ namespace Operations.Repositories.Base
         {
             AppDbContext = appDbContext;
         }
-        public void CreateAsyn(T entity) => AppDbContext.Value.Set<T>().AddAsync(entity);
+        public void Create(T entity) => AppDbContext.Value.Set<T>().Add(entity);
 
         public void Update(T entity) => AppDbContext.Value.Set<T>().Update(entity);
 

@@ -1,4 +1,4 @@
-﻿[
+[
   {
     "Key": "GeneralError",
     "LocalizedValue": {
@@ -25,6 +25,83 @@
     "LocalizedValue": {
       "en": "No data found",
       "ar": "لاتوجد بيانات"
+    }
+  },
+  {
+    "Key": "EmailAlreadyExists",
+    "LocalizedValue": {
+      "en": "Email is already registered",
+      "ar": "البريد الإلكتروني مسجل مسبقاً"
+    }
+  },
+  {
+    "Key": "UserNameAlreadyExists",
+    "LocalizedValue": {
+      "en": "Username is already taken",
+      "ar": "اسم المستخدم محجوز مسبقاً"
+    }
+  },
+  {
+    "Key": "UserNameOrEmailAlreadyExists",
+    "LocalizedValue": {
+      "en": "Username or Email is already taken",
+      "ar": "اسم المستخدم او البريد الإلكتروني مسجل مسبقاً"
+    }
+  },
+  {
+    "Key": "InvalidCredentials",
+    "LocalizedValue": {
+      "en": "Invalid email or password",
+      "ar": "البريد الإلكتروني أو كلمة المرور غير صحيحة"
+    }
+  },
+  {
+    "Key": "InvalidCurrentPassword",
+    "LocalizedValue": {
+      "en": "Current password is incorrect",
+      "ar": "كلمة المرور الحالية غير صحيحة"
+    }
+  },
+  {
+    "Key": "PasswordResetSent",
+    "LocalizedValue": {
+      "en": "Password reset link has been sent to your email",
+      "ar": "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني"
+    }
+  },
+  {
+    "Key": "InvalidResetToken",
+    "LocalizedValue": {
+      "en": "Reset token is invalid or has expired",
+      "ar": "رمز إعادة التعيين غير صالح أو منتهي الصلاحية"
+    }
+  },
+  {
+    "Key": "PasswordResetSuccess",
+    "LocalizedValue": {
+      "en": "Password has been reset successfully",
+      "ar": "تم إعادة تعيين كلمة المرور بنجاح"
+    }
+  },
+  {
+    "Key": "RegistrationSuccess",
+    "LocalizedValue": {
+      "en": "Registration successful",
+      "ar": "تم التسجيل بنجاح"
+    }
+  },
+  {
+    "Key": "PasswordMismatch",
+    "LocalizedValue": {
+      "en": "Passwords do not match",
+      "ar": "كلمتا المرور غير متطابقتان"
+    }
+  },
+  {
+    "Key": "PasswordPolicyViolation",
+    "LocalizedValue": {
+      "en": "Password must be at least 8 characters and contain uppercase, lowercase, digit, and special character",
+      "ar": "يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل وتتضمن حرفاً كبيراً وصغيراً ورقماً وحرفاً خاصاً"
     }
   }
 ]

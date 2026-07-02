@@ -1,7 +1,8 @@
-﻿using Operations.IRepositories.UnitOfWork;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Operations.IRepositories.UnitOfWork;
 
 namespace Operations.Repositories.Resolver
 {
@@ -19,6 +20,9 @@ namespace Operations.Repositories.Resolver
             // Resolve UnitOfWork
             services.AddScoped<IUnitOfWork, UnitOfWork.UnitOfWork>();
 
+            services.AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
+                .AddEntityFrameworkStores<Context.AppDbContext>()
+                .AddDefaultTokenProviders();
         }
         public static void ResolveLazier(IServiceCollection services, IConfiguration configuration)
         {

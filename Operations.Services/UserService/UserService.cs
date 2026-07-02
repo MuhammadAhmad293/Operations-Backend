@@ -41,24 +41,22 @@ namespace Operations.Services.UserService
             User user = Mapper.Map<User>(request);
             user.Password = PasswordHash.CreateHash(request.Password);
 
-            UnitOfWork.UserRepository.CreateAsyn(user);
+            UnitOfWork.UserRepository.Create(user);
 
             Mail mail = new()
             {
                 Subject = MailSetting.Subject,
                 To = request.Email,
-                Body = string.Format(MailSetting.Body, request.Email, request.Password),
+                Body = string.Format(MailSetting.Body, request.FirstName, request.Email),
                 MailStatusId = (int)MailStatusEnum.New,
                 MailTypeId = (int)MailTypeEnum.WelcomeMail,
             };
-            (MailDto mailDto, MailSettingDto mailSetting) = PrepareMailDtos(mail);
-            await MailSender.SendMail(mailDto, mailSetting);
+            UnitOfWork.MailRepository.Create(mail);
 
-            UnitOfWork.MailRepository.CreateAsyn(mail);
-
-            if(await UnitOfWork.CommitAsync() > default(int))
+            if (await UnitOfWork.CommitAsync() > default(int))
             {
-                
+                (MailDto mailDto, MailSettingDto mailSetting) = PrepareMailDtos(mail);
+                await MailSender.SendMail(mailDto, mailSetting);
                 return response.GetSuccessResponse(Localization.GeneralSuccess);
             }
 
