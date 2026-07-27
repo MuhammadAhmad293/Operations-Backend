@@ -28,6 +28,16 @@ namespace Operations.Repositories.Base
             }
             return await query.FirstOrDefaultAsync();
         }
+        public async Task<bool> AnyAsync(Expression<Func<T, bool>> filter)
+        {
+            IQueryable<T> query = AppDbContext.Value.Set<T>();
+
+            if (filter != null)
+            {
+                return await query.AnyAsync(filter);
+            }
+            return await query.AnyAsync();
+        }
         public async Task<List<T>> GetAllAsync() => await AppDbContext.Value.Set<T>().ToListAsync();
 
     }

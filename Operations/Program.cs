@@ -7,15 +7,23 @@ using Common.Validator;
 using Operations;
 using Operations.Filter;
 using Operations.Repositories.Resolver;
+using Operations.Services.Email;
+using Operations.Services.HealthChecks;
 using Operations.Services.Mapper;
+using Operations.Services.Messaging;
+using Operations.Services.Metrics;
+using Operations.Services.Outbox;
 using Operations.Services.Resolver;
 using Operations.Services.Setting;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Hangfire;
 using Mapster;
 using MapsterMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using System.Text;
 using System.Globalization;
 using System.Reflection;
@@ -102,6 +110,28 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
+// Email delivery pipeline
+EmailDeliverySettings emailDeliverySettings = new();
+builder.Configuration.Bind("EmailDelivery", emailDeliverySettings);
+builder.Services.AddSingleton(emailDeliverySettings);
+
+builder.Services.AddSingleton<RabbitConnectionManager>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<RabbitConnectionManager>());
+
+builder.Services.AddSingleton<IRabbitPublisher, RabbitPublisher>();
+builder.Services.AddSingleton<EmailResiliencePipeline>();
+builder.Services.AddScoped<ISmtpEmailSender, SmtpEmailSender>();
+builder.Services.AddSingleton<EmailMetrics>();
+
+builder.Services.AddHostedService<OutboxPublisherService>();
+builder.Services.AddHostedService<EmailConsumer>();
+builder.Services.AddHostedService<DeadLetterHandler>();
+
+// Health Checks
+builder.Services.AddHealthChecks()
+    .AddCheck<RabbitMqHealthCheck>("rabbitmq", tags: ["ready"])
+    .AddCheck<OutboxBacklogHealthCheck>("outbox-backlog", tags: ["ready"]);
+
 builder.Services.AddControllers();
 // add hangfire
 builder.Services.AddHangfire(x => x.UseSqlServerStorage(builder.Configuration.GetConnectionString("HFDBConString")));
@@ -113,6 +143,24 @@ builder.Services.AddEndpointsApiExplorer();//
 builder.Services.AddSwaggerGen(c =>
 {
     c.OperationFilter<SwaggerHeaderFilter>();
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter the JWT token you received from Login/Register. Just the raw token — no need to type \"Bearer \" in front of it."
+    });
+
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecuritySchemeReference("Bearer", document),
+            new List<string>()
+        }
+    });
 });//
 
 
@@ -162,6 +210,8 @@ app.UseRequestLocalization(option =>
 #endregion
 
 app.MapControllers();
+
+app.MapHealthChecks("/health");
 
 app.UseHangfireDashboard();
 

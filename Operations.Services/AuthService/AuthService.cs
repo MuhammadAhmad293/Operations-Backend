@@ -1,8 +1,9 @@
 using Common.Dto;
 using Common.Enums;
-using Common.Notification.Mail;
 using Common.PasswordHash;
 using Common.Validator;
+using MapsterMapper;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Operations.DataModel.Entities;
 using Operations.Dto.DTOs.Auth;
@@ -13,7 +14,6 @@ using Operations.Services.Base;
 using Operations.Services.CustomExceptions;
 using Operations.Services.Localization;
 using Operations.Services.Setting;
-using MapsterMapper;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -22,7 +22,6 @@ namespace Operations.Services.AuthService
     public class AuthService : BaseService, IAuthService
     {
         private IPasswordHash PasswordHash { get; }
-        private IMailSender MailSender { get; }
         private MailSettings MailSetting { get; }
         private IJwtTokenGenerator JwtTokenGenerator { get; }
         private IValidatorHelper ValidatorHelper { get; }
@@ -33,14 +32,12 @@ namespace Operations.Services.AuthService
             IMapper mapper,
             ILocalizationService localization,
             IPasswordHash passwordHash,
-            IMailSender mailSender,
             MailSettings mailSettings,
             IJwtTokenGenerator jwtTokenGenerator,
             IValidatorHelper validatorHelper,
             JwtSettings jwtSettings) : base(unitOfWork, mapper, localization)
         {
             PasswordHash = passwordHash;
-            MailSender = mailSender;
             MailSetting = mailSettings;
             JwtTokenGenerator = jwtTokenGenerator;
             ValidatorHelper = validatorHelper;
@@ -56,26 +53,17 @@ namespace Operations.Services.AuthService
             ValidateRegistration(request);
 
             // Pre-check for fast UX — unique DB constraints are the authoritative guard
-            if (await UnitOfWork.UserRepository.FirstOrDefaultAsync(u => u.UserName == request.UserName || u.Email == request.Email) is not null)
+            if (await UnitOfWork.UserRepository.AnyAsync(u => u.UserName == request.UserName || u.Email == request.Email))
                 throw new InvalidRequestException(Localization.UserNameOrEmailAlreadyExists);
 
             Mail mail = CreateWelcomeMail(request.FirstName, request.Email);
             UnitOfWork.UserRepository.Create(CreateUser(request));
             UnitOfWork.MailRepository.Create(mail);
+            UnitOfWork.OutboxRepository.Create(new OutboxMessage { Mail = mail });
 
-            try
-            {
-                await UnitOfWork.CommitAsync(cancellationToken);
-            }
-            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
-            {
-                throw new InvalidRequestException(ResolveUniqueConstraintError(ex));
-            }
-
-            (MailDto mailDto, MailSettingDto mailSettingDto) = PrepareMailDtos(mail);
-            await MailSender.SendMail(mailDto, mailSettingDto, cancellationToken);
-
-            return response.GetSuccessResponse(Localization.RegistrationSuccess);
+            return await UnitOfWork.CommitAsync(cancellationToken) > default(int)
+                ? response.GetSuccessResponse(Localization.RegistrationSuccess)
+                : response.GetErrorResponse(Localization.GeneralError);
         }
 
         public async Task<ResponseDto<LoginResponseDto>> Login(LoginDto request, CancellationToken cancellationToken = default)
@@ -126,7 +114,7 @@ namespace Operations.Services.AuthService
             UnitOfWork.UserRepository.Update(user);
 
             return await UnitOfWork.CommitAsync(cancellationToken) > default(int)
-                ? response.GetSuccessResponse()
+                ? response.GetSuccessResponse()//ToDo: add success msg 
                 : response.GetErrorResponse(Localization.GeneralError);
         }
 
@@ -145,7 +133,7 @@ namespace Operations.Services.AuthService
                 await UnitOfWork.PasswordResetTokenRepository.GetActiveByUserIdAsync(user.Id);
             activeTokens.ForEach(t => { t.IsUsed = true; UnitOfWork.PasswordResetTokenRepository.Update(t); });
 
-            string rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+            string rawToken = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
             string tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
 
             UnitOfWork.PasswordResetTokenRepository.Create(new PasswordResetToken
@@ -156,21 +144,19 @@ namespace Operations.Services.AuthService
                 IsUsed = false
             });
 
-            string resetLink = $"{JwtSettings.FrontEndBaseUrl}/reset-password?token={Uri.EscapeDataString(rawToken)}";
+            string resetLink = $"{JwtSettings.FrontEndBaseUrl}/reset-password?token={rawToken}";
             Mail mail = new()
             {
                 Subject = "Password Reset Request",
                 To = user.Email,
                 Body = $"Click the following link to reset your password: {resetLink}",
-                MailStatusId = (int)MailStatusEnum.New,
+                MailStatusId = (int)MailStatusEnum.Draft,
                 MailTypeId = (int)MailTypeEnum.ForgetPassword,
             };
             UnitOfWork.MailRepository.Create(mail);
+            UnitOfWork.OutboxRepository.Create(new OutboxMessage { Mail = mail });
 
             await UnitOfWork.CommitAsync(cancellationToken);
-
-            (MailDto mailDto, MailSettingDto mailSettingDto) = PrepareMailDtos(mail);
-            await MailSender.SendMail(mailDto, mailSettingDto, cancellationToken);
 
             return response.GetSuccessResponse(Localization.PasswordResetSent);
         }
@@ -244,7 +230,7 @@ namespace Operations.Services.AuthService
             Subject = MailSetting.Subject,
             To = email,
             Body = string.Format(MailSetting.Body, firstName, email),
-            MailStatusId = (int)MailStatusEnum.New,
+            MailStatusId = (int)MailStatusEnum.Draft,
             MailTypeId = (int)MailTypeEnum.WelcomeMail,
         };
 
@@ -262,28 +248,6 @@ namespace Operations.Services.AuthService
                 throw new NameRequiredException("Password is required");
             if (string.IsNullOrWhiteSpace(request.ConfirmPassword))
                 throw new NameRequiredException("Confirm password is required");
-        }
-
-        private (MailDto, MailSettingDto) PrepareMailDtos(Mail mail)
-        {
-            MailDto mailDto = new()
-            {
-                Id = mail.MailId,
-                MailTo = new List<string> { mail.To },
-                Subject = mail.Subject,
-                Body = mail.Body,
-                IsBodyHtml = false,
-            };
-            MailSettingDto mailSetting = new()
-            {
-                EmailAddress = MailSetting.EmailAddress,
-                Username = MailSetting.Username,
-                Password = MailSetting.Password,
-                SmtpServer = MailSetting.SmtpServer,
-                EmailSmtpPort = MailSetting.EmailSmtpPort,
-                SmtpTimeOut = MailSetting.SmtpTimeOut
-            };
-            return (mailDto, mailSetting);
         }
 
         private static bool IsUniqueConstraintViolation(DbUpdateException ex) =>

@@ -29,6 +29,8 @@ namespace Operations.Repositories.Context
         public DbSet<User> User { get; set; }
         public DbSet<Mail> Mail { get; set; }
         public DbSet<PasswordResetToken> PasswordResetToken { get; set; }
+        public DbSet<OutboxMessage> OutboxMessage { get; set; }
+        public DbSet<ProcessedMessage> ProcessedMessage { get; set; }
 
     }
 }

@@ -23,6 +23,8 @@ namespace Operations.Repositories.UnitOfWork
         public IUserRepository UserRepository => new UserRepository(AppDbContext);
         public IMailRepository MailRepository => new MailRepository(AppDbContext);
         public IPasswordResetTokenRepository PasswordResetTokenRepository => new PasswordResetTokenRepository(AppDbContext);
+        public IOutboxRepository OutboxRepository => new OutboxRepository(AppDbContext);
+        public IProcessedMessageRepository ProcessedMessageRepository => new ProcessedMessageRepository(AppDbContext);
         #endregion
 
     }

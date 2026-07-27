@@ -12,6 +12,8 @@ namespace Operations.IRepositories.UnitOfWork
         public IUserRepository UserRepository { get; }
         public IMailRepository MailRepository { get; }
         public IPasswordResetTokenRepository PasswordResetTokenRepository { get; }
+        public IOutboxRepository OutboxRepository { get; }
+        public IProcessedMessageRepository ProcessedMessageRepository { get; }
         #endregion
     }
 }

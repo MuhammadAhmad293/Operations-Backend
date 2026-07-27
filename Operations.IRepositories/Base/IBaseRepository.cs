@@ -8,6 +8,7 @@ namespace Operations.IRepositories.IRepository
         void Update(T entity);
         void Delete(T entity);
         Task<T> FirstOrDefaultAsync(Expression<Func<T, bool>> filter);
+        Task<bool> AnyAsync(Expression<Func<T, bool>> filter);
         Task<List<T>> GetAllAsync();
     }
 }

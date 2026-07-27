@@ -1,19 +1,19 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Operations.DataModel.Entities;
-using Operations.DataModel.Enums;
 
 namespace Operations.Repositories.EntityConfiguration
 {
-    internal class MailConfiguration : IEntityTypeConfiguration<Mail>
+    internal class ProcessedMessageConfiguration : IEntityTypeConfiguration<ProcessedMessage>
     {
-        public void Configure(EntityTypeBuilder<Mail> builder)
+        public void Configure(EntityTypeBuilder<ProcessedMessage> builder)
         {
             builder.Property(e => e.CreationTime).HasDefaultValueSql("GETDATE()");
             builder.Property(e => e.LastModificationTime).HasDefaultValueSql("GETDATE()");
             builder.Property(e => e.IsDeleted).HasDefaultValue(false);
-            builder.Property(e => e.DeliveryStatus).HasDefaultValue(DeliveryStatus.Pending);
-            builder.Property(e => e.RetryCount).HasDefaultValue(0);
+            builder.Property(e => e.MessageId).IsRequired();
+
+            builder.HasIndex(e => e.MessageId).IsUnique();
         }
     }
 }

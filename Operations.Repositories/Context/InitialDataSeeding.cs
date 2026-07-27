@@ -18,11 +18,11 @@ namespace Operations.Repositories.Context
             modelBuilder.Entity<MailStatus>().HasData(
                         new MailStatus
                         {
-                            MailStatusId = (int)MailStatusEnum.New,
-                            ArName = "جديد",
-                            EnName = "New",
-                            ArDescription = "جديد",
-                            EnDescription = "New",
+                            MailStatusId = (int)MailStatusEnum.Draft,
+                            ArName = "مسودة",
+                            EnName = "Draft",
+                            ArDescription = "مسودة",
+                            EnDescription = "Draft",
                             CreationTime = new DateTime(2023, 01, 1)
                         },
                         new MailStatus
@@ -36,7 +36,7 @@ namespace Operations.Repositories.Context
                         },
                         new MailStatus
                         {
-                            MailStatusId = (int)MailStatusEnum.Processing,
+                            MailStatusId = 3,
                             ArName = "معالجة",
                             EnName = "Processing",
                             ArDescription = "معالجة",

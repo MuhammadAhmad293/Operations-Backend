@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Operations.Repositories.Context;
 
@@ -11,9 +12,11 @@ using Operations.Repositories.Context;
 namespace Operations.Repositories.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260702195626_AddOutboxAndInboxTables")]
+    partial class AddOutboxAndInboxTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -45,11 +48,6 @@ namespace Operations.Repositories.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETDATE()");
 
-                    b.Property<int>("DeliveryStatus")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
-
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
@@ -57,12 +55,6 @@ namespace Operations.Repositories.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
-
-                    b.Property<DateTime?>("LastAttemptAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("LastError")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("LastModificationTime")
                         .ValueGeneratedOnAdd()
@@ -80,14 +72,6 @@ namespace Operations.Repositories.Migrations
 
                     b.Property<string>("Name")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("RetryCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
-
-                    b.Property<DateTime?>("SentAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("Subject")
                         .IsRequired()
@@ -190,11 +174,11 @@ namespace Operations.Repositories.Migrations
                         new
                         {
                             MailStatusId = 1,
-                            ArDescription = "مسودة",
-                            ArName = "مسودة",
+                            ArDescription = "جديد",
+                            ArName = "جديد",
                             CreationTime = new DateTime(2023, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            EnDescription = "Draft",
-                            EnName = "Draft",
+                            EnDescription = "New",
+                            EnName = "New",
                             IsDeleted = false,
                             LastModificationTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },

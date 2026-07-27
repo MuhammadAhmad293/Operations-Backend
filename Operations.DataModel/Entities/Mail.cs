@@ -1,4 +1,5 @@
 ﻿using Operations.DataModel.Base;
+using Operations.DataModel.Enums;
 
 namespace Operations.DataModel.Entities
 {
@@ -15,6 +16,11 @@ namespace Operations.DataModel.Entities
         public string? Name { get; set; }
         public string? MobileNumber { get; set; }
         public string? Email { get; set; }
+        public DeliveryStatus DeliveryStatus { get; set; } = DeliveryStatus.Pending;
+        public int RetryCount { get; set; }
+        public DateTime? LastAttemptAt { get; set; }
+        public DateTime? SentAt { get; set; }
+        public string? LastError { get; set; }
         public MailStatus MailStatus { get; set; }
         public MailType MailType { get; set; }
         public ICollection<MailAttachment> Attachments { get; set; }

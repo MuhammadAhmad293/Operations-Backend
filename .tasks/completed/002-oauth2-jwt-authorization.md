@@ -2,7 +2,7 @@
 
 ## Status
 
-`planned`
+`completed`
 
 ## Goal
 

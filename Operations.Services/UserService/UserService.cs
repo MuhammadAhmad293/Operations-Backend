@@ -1,6 +1,5 @@
 ﻿using Common.Dto;
 using Common.Enums;
-using Common.Notification.Mail;
 using Common.PasswordHash;
 using Operations.DataModel.Entities;
 using Operations.Dto.DTOs;
@@ -20,15 +19,12 @@ namespace Operations.Services.UserService
     public class UserService : BaseService, IUserService
     {
         private readonly IPasswordHash PasswordHash;
-        private IMailSender MailSender;
         private MailSettings MailSetting;
 
-
         public UserService(IUnitOfWork unitOfWork, IMapper mapper, ILocalizationService localization,
-            IPasswordHash passwordHash, IMailSender mailSender, MailSettings mailSetting) : base(unitOfWork, mapper, localization)
+            IPasswordHash passwordHash, MailSettings mailSetting) : base(unitOfWork, mapper, localization)
         {
             PasswordHash = passwordHash;
-            MailSender = mailSender;
             MailSetting = mailSetting;
         }
         #region Public Methods
@@ -48,19 +44,15 @@ namespace Operations.Services.UserService
                 Subject = MailSetting.Subject,
                 To = request.Email,
                 Body = string.Format(MailSetting.Body, request.FirstName, request.Email),
-                MailStatusId = (int)MailStatusEnum.New,
+                MailStatusId = (int)MailStatusEnum.Draft,
                 MailTypeId = (int)MailTypeEnum.WelcomeMail,
             };
             UnitOfWork.MailRepository.Create(mail);
+            UnitOfWork.OutboxRepository.Create(new OutboxMessage { Mail = mail });
 
-            if (await UnitOfWork.CommitAsync() > default(int))
-            {
-                (MailDto mailDto, MailSettingDto mailSetting) = PrepareMailDtos(mail);
-                await MailSender.SendMail(mailDto, mailSetting);
-                return response.GetSuccessResponse(Localization.GeneralSuccess);
-            }
-
-            return response.GetErrorResponse(Localization.GeneralError);
+            return await UnitOfWork.CommitAsync() > default(int)
+                ? response.GetSuccessResponse(Localization.GeneralSuccess)
+                : response.GetErrorResponse(Localization.GeneralError);
         }
         public async Task<ResponseDto<EmptyResponseDto>> Update(UserDto userDto)
         {
@@ -209,28 +201,6 @@ namespace Operations.Services.UserService
             Array.Copy(hash, 0, hashBytes, 16, 20);
 
             return Convert.ToBase64String(hashBytes);
-        }
-        private (MailDto, MailSettingDto) PrepareMailDtos(Mail mail)
-        {
-            MailDto mailDto = new()
-            {
-                Id = mail.MailId,
-                MailTo = new List<string> { mail.To },
-                Subject = mail.Subject,
-                Body = mail.Body,
-                IsBodyHtml = false,
-            };
-            MailSettingDto mailSetting = new()
-            {
-                EmailAddress = MailSetting.EmailAddress,
-                Username = MailSetting.Username,
-                Password = MailSetting.Password,
-                SmtpServer = MailSetting.SmtpServer,
-                EmailSmtpPort = MailSetting.EmailSmtpPort,
-                SmtpTimeOut = MailSetting.SmtpTimeOut
-            };
-
-            return (mailDto, mailSetting);
         }
         #endregion
     }
