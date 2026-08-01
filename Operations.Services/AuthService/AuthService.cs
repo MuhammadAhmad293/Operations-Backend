@@ -6,6 +6,7 @@ using MapsterMapper;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Operations.DataModel.Entities;
+using Operations.DataModel.Enums;
 using Operations.Dto.DTOs.Auth;
 using Operations.IRepositories.UnitOfWork;
 using Operations.IServices.IService;
@@ -26,6 +27,7 @@ namespace Operations.Services.AuthService
         private IJwtTokenGenerator JwtTokenGenerator { get; }
         private IValidatorHelper ValidatorHelper { get; }
         private JwtSettings JwtSettings { get; }
+        private RefreshTokenSettings RefreshTokenSettings { get; }
 
         public AuthService(
             IUnitOfWork unitOfWork,
@@ -35,13 +37,15 @@ namespace Operations.Services.AuthService
             MailSettings mailSettings,
             IJwtTokenGenerator jwtTokenGenerator,
             IValidatorHelper validatorHelper,
-            JwtSettings jwtSettings) : base(unitOfWork, mapper, localization)
+            JwtSettings jwtSettings,
+            RefreshTokenSettings refreshTokenSettings) : base(unitOfWork, mapper, localization)
         {
             PasswordHash = passwordHash;
             MailSetting = mailSettings;
             JwtTokenGenerator = jwtTokenGenerator;
             ValidatorHelper = validatorHelper;
             JwtSettings = jwtSettings;
+            RefreshTokenSettings = refreshTokenSettings;
         }
 
         #region Public Methods
@@ -66,7 +70,7 @@ namespace Operations.Services.AuthService
                 : response.GetErrorResponse(Localization.GeneralError);
         }
 
-        public async Task<ResponseDto<LoginResponseDto>> Login(LoginDto request, CancellationToken cancellationToken = default)
+        public async Task<ResponseDto<LoginResponseDto>> Login(LoginDto request, string? ipAddress, string? deviceId, string? deviceName, string? platform, CancellationToken cancellationToken = default)
         {
             ResponseDto<LoginResponseDto> response = new ResponseDto<LoginResponseDto>().GetErrorResponse();
 
@@ -77,13 +81,212 @@ namespace Operations.Services.AuthService
             if (user is null || !PasswordHash.ValidatePassword(request.Password, user.Password))
                 throw new InvalidRequestException(Localization.InvalidCredentials);
 
+            List<RefreshToken> activeDevices = await UnitOfWork.RefreshTokenRepository.GetActiveByUserIdAsync(user.Id);
+            if (RefreshTokenSettings.MaxActiveDevices > 0 && activeDevices.Count >= RefreshTokenSettings.MaxActiveDevices)
+            {
+                if (string.Equals(RefreshTokenSettings.MaxActiveDevicesStrategy, "RejectNewLogin", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidRequestException(Localization.MaxActiveDevicesReached);
+
+                RefreshToken oldest = activeDevices.OrderBy(t => t.CreationTime).First();
+                oldest.RevokedAt = DateTime.UtcNow;
+                oldest.RevokedReason = RefreshTokenRevocationReason.DeviceLimitReached;
+                UnitOfWork.RefreshTokenRepository.Update(oldest);
+            }
+
+            (string rawRefreshToken, RefreshToken refreshTokenEntity) = CreateRefreshToken(
+                user.Id, Guid.NewGuid(), DateTime.UtcNow, ipAddress, deviceId, deviceName, platform);
+            UnitOfWork.RefreshTokenRepository.Create(refreshTokenEntity);
+
             LoginResponseDto loginResponse = new()
             {
                 Token = JwtTokenGenerator.GenerateToken(user),
-                ExpiresAt = DateTime.UtcNow.AddMinutes(JwtSettings.ExpiryMinutes)
+                ExpiresAt = DateTime.UtcNow.AddMinutes(JwtSettings.ExpiryMinutes),
+                RefreshToken = rawRefreshToken
+            };
+
+            await UnitOfWork.CommitAsync(cancellationToken);
+
+            return response.GetSuccessResponse(loginResponse);
+        }
+
+        public async Task<ResponseDto<LoginResponseDto>> RefreshToken(string? presentedToken, string? ipAddress, string? deviceId, string? deviceName, string? platform, CancellationToken cancellationToken = default)
+        {
+            ResponseDto<LoginResponseDto> response = new ResponseDto<LoginResponseDto>().GetErrorResponse();
+
+            if (string.IsNullOrWhiteSpace(presentedToken))
+                throw new InvalidRequestException(Localization.InvalidRequest);
+
+            string tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(presentedToken)));
+            RefreshToken existing = await UnitOfWork.RefreshTokenRepository.GetByTokenHashAsync(tokenHash);
+
+            if (existing is null)
+                throw new InvalidRequestException(Localization.InvalidRefreshToken);
+
+            // Reuse detection: an already-revoked token being presented again = theft.
+            // Kill only this token's rotation chain (FamilyId), not the user's other devices.
+            if (existing.RevokedAt is not null)
+            {
+                List<RefreshToken> family = await UnitOfWork.RefreshTokenRepository.GetActiveByFamilyIdAsync(existing.FamilyId);
+                await UnitOfWork.ExecuteInTransactionAsync(_ =>
+                {
+                    family.ForEach(t =>
+                    {
+                        t.RevokedAt = DateTime.UtcNow;
+                        t.RevokedReason = RefreshTokenRevocationReason.ReuseDetected;
+                        UnitOfWork.RefreshTokenRepository.Update(t);
+                    });
+                    return Task.CompletedTask;
+                }, cancellationToken);
+
+                throw new InvalidRequestException(Localization.InvalidRefreshToken);
+            }
+
+            if (existing.ExpiresAt <= DateTime.UtcNow)
+                throw new InvalidRequestException(Localization.InvalidRefreshToken);
+
+            if (DateTime.UtcNow - existing.FamilyCreatedAt > TimeSpan.FromDays(RefreshTokenSettings.AbsoluteSessionLifetimeDays))
+            {
+                List<RefreshToken> family = await UnitOfWork.RefreshTokenRepository.GetActiveByFamilyIdAsync(existing.FamilyId);
+                family.ForEach(t =>
+                {
+                    t.RevokedAt = DateTime.UtcNow;
+                    t.RevokedReason = RefreshTokenRevocationReason.AbsoluteLifetimeExceeded;
+                    UnitOfWork.RefreshTokenRepository.Update(t);
+                });
+                await UnitOfWork.CommitAsync(cancellationToken);
+
+                throw new InvalidRequestException(Localization.SessionExpired);
+            }
+
+            User user = await UnitOfWork.UserRepository.FirstOrDefaultAsync(u => u.Id == existing.UserId);
+            if (user is null)
+                throw new ObjectNotFoundException("User not found");
+
+            (string rawRefreshToken, RefreshToken newEntity) = CreateRefreshToken(
+                user.Id, existing.FamilyId, existing.FamilyCreatedAt, ipAddress,
+                deviceId ?? existing.DeviceId, deviceName ?? existing.DeviceName, platform ?? existing.Platform);
+
+            try
+            {
+                // Rotation must be atomic: revoke-old + create-new either both land or neither does.
+                await UnitOfWork.ExecuteInTransactionAsync(_ =>
+                {
+                    existing.RevokedAt = DateTime.UtcNow;
+                    existing.RevokedReason = RefreshTokenRevocationReason.RefreshRotation;
+                    existing.LastUsedAt = DateTime.UtcNow;
+                    existing.LastUsedIp = ipAddress;
+                    UnitOfWork.RefreshTokenRepository.Update(existing);
+                    UnitOfWork.RefreshTokenRepository.Create(newEntity);
+                    return Task.CompletedTask;
+                }, cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Lost the race against a concurrent refresh call using the same token.
+                throw new InvalidRequestException(Localization.RefreshTokenConflict);
+            }
+
+            LoginResponseDto loginResponse = new()
+            {
+                Token = JwtTokenGenerator.GenerateToken(user),
+                ExpiresAt = DateTime.UtcNow.AddMinutes(JwtSettings.ExpiryMinutes),
+                RefreshToken = rawRefreshToken
             };
 
             return response.GetSuccessResponse(loginResponse);
+        }
+
+        public async Task<ResponseDto<EmptyResponseDto>> Logout(string? presentedToken, CancellationToken cancellationToken = default)
+        {
+            ResponseDto<EmptyResponseDto> response = new ResponseDto<EmptyResponseDto>().GetErrorResponse();
+
+            if (string.IsNullOrWhiteSpace(presentedToken))
+                throw new InvalidRequestException(Localization.InvalidRequest);
+
+            string tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(presentedToken)));
+            RefreshToken existing = await UnitOfWork.RefreshTokenRepository.GetByTokenHashAsync(tokenHash);
+
+            // Silent success either way — same non-enumeration philosophy as ForgotPassword.
+            if (existing is null || existing.RevokedAt is not null)
+                return response.GetSuccessResponse(Localization.LogoutSuccess);
+
+            existing.RevokedAt = DateTime.UtcNow;
+            existing.RevokedReason = RefreshTokenRevocationReason.Logout;
+            UnitOfWork.RefreshTokenRepository.Update(existing);
+
+            return await UnitOfWork.CommitAsync(cancellationToken) > default(int)
+                ? response.GetSuccessResponse(Localization.LogoutSuccess)
+                : response.GetErrorResponse(Localization.GeneralError);
+        }
+
+        public async Task<ResponseDto<EmptyResponseDto>> LogoutAllDevices(string userId, CancellationToken cancellationToken = default)
+        {
+            ResponseDto<EmptyResponseDto> response = new ResponseDto<EmptyResponseDto>().GetErrorResponse();
+
+            if (!int.TryParse(userId, out int id))
+                throw new InvalidRequestException(Localization.InvalidRequest);
+
+            List<RefreshToken> activeTokens = await UnitOfWork.RefreshTokenRepository.GetActiveByUserIdAsync(id);
+            if (activeTokens.Count == 0)
+                return response.GetSuccessResponse(Localization.LogoutAllSuccess);
+
+            activeTokens.ForEach(t =>
+            {
+                t.RevokedAt = DateTime.UtcNow;
+                t.RevokedReason = RefreshTokenRevocationReason.LogoutAll;
+                UnitOfWork.RefreshTokenRepository.Update(t);
+            });
+
+            return await UnitOfWork.CommitAsync(cancellationToken) > default(int)
+                ? response.GetSuccessResponse(Localization.LogoutAllSuccess)
+                : response.GetErrorResponse(Localization.GeneralError);
+        }
+
+        public async Task<ResponseDto<List<SessionDto>>> GetActiveSessions(string userId, CancellationToken cancellationToken = default)
+        {
+            ResponseDto<List<SessionDto>> response = new ResponseDto<List<SessionDto>>().GetErrorResponse();
+
+            if (!int.TryParse(userId, out int id))
+                throw new InvalidRequestException(Localization.InvalidRequest);
+
+            List<RefreshToken> activeTokens = await UnitOfWork.RefreshTokenRepository.GetActiveByUserIdAsync(id);
+
+            List<SessionDto> sessions = activeTokens.Select(t => new SessionDto
+            {
+                Id = t.Id,
+                DeviceId = t.DeviceId,
+                DeviceName = t.DeviceName,
+                Platform = t.Platform,
+                CreatedAt = t.CreationTime,
+                LastUsedAt = t.LastUsedAt,
+                LastUsedIp = t.LastUsedIp
+            }).ToList();
+
+            return response.GetSuccessResponse(sessions);
+        }
+
+        public async Task<ResponseDto<EmptyResponseDto>> RevokeSession(string userId, int refreshTokenId, CancellationToken cancellationToken = default)
+        {
+            ResponseDto<EmptyResponseDto> response = new ResponseDto<EmptyResponseDto>().GetErrorResponse();
+
+            if (!int.TryParse(userId, out int id))
+                throw new InvalidRequestException(Localization.InvalidRequest);
+
+            RefreshToken token = await UnitOfWork.RefreshTokenRepository.FirstOrDefaultAsync(t => t.Id == refreshTokenId && t.UserId == id);
+            if (token is null)
+                throw new ObjectNotFoundException("Session not found");
+
+            // Idempotent — revoking an already-revoked session is a no-op success.
+            if (token.RevokedAt is not null)
+                return response.GetSuccessResponse();
+
+            token.RevokedAt = DateTime.UtcNow;
+            token.RevokedReason = RefreshTokenRevocationReason.AdminRevoked;
+            UnitOfWork.RefreshTokenRepository.Update(token);
+
+            return await UnitOfWork.CommitAsync(cancellationToken) > default(int)
+                ? response.GetSuccessResponse()
+                : response.GetErrorResponse(Localization.GeneralError);
         }
 
         public async Task<ResponseDto<EmptyResponseDto>> ChangePassword(string userId, ChangePasswordDto request, CancellationToken cancellationToken = default)
@@ -113,8 +316,17 @@ namespace Operations.Services.AuthService
             user.Password = PasswordHash.CreateHash(request.NewPassword);
             UnitOfWork.UserRepository.Update(user);
 
+            // A changed password should force re-authentication on every device.
+            List<RefreshToken> activeRefreshTokens = await UnitOfWork.RefreshTokenRepository.GetActiveByUserIdAsync(id);
+            activeRefreshTokens.ForEach(t =>
+            {
+                t.RevokedAt = DateTime.UtcNow;
+                t.RevokedReason = RefreshTokenRevocationReason.PasswordChanged;
+                UnitOfWork.RefreshTokenRepository.Update(t);
+            });
+
             return await UnitOfWork.CommitAsync(cancellationToken) > default(int)
-                ? response.GetSuccessResponse()//ToDo: add success msg 
+                ? response.GetSuccessResponse()//ToDo: add success msg
                 : response.GetErrorResponse(Localization.GeneralError);
         }
 
@@ -195,6 +407,16 @@ namespace Operations.Services.AuthService
                 await UnitOfWork.PasswordResetTokenRepository.GetActiveByUserIdAsync(resetToken.UserId);
             remainingTokens.ForEach(t => { t.IsUsed = true; UnitOfWork.PasswordResetTokenRepository.Update(t); });
 
+            // A reset password should force re-authentication on every device.
+            List<RefreshToken> activeRefreshTokens =
+                await UnitOfWork.RefreshTokenRepository.GetActiveByUserIdAsync(resetToken.UserId);
+            activeRefreshTokens.ForEach(t =>
+            {
+                t.RevokedAt = DateTime.UtcNow;
+                t.RevokedReason = RefreshTokenRevocationReason.PasswordReset;
+                UnitOfWork.RefreshTokenRepository.Update(t);
+            });
+
             return await UnitOfWork.CommitAsync(cancellationToken) > default(int)
                 ? response.GetSuccessResponse(Localization.PasswordResetSuccess)
                 : response.GetErrorResponse(Localization.GeneralError);
@@ -248,6 +470,29 @@ namespace Operations.Services.AuthService
                 throw new NameRequiredException("Password is required");
             if (string.IsNullOrWhiteSpace(request.ConfirmPassword))
                 throw new NameRequiredException("Confirm password is required");
+        }
+
+        private (string rawToken, RefreshToken entity) CreateRefreshToken(
+            int userId, Guid familyId, DateTime familyCreatedAt, string? ipAddress, string? deviceId, string? deviceName, string? platform)
+        {
+            string rawToken = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+            string tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
+
+            RefreshToken entity = new()
+            {
+                TokenHash = tokenHash,
+                UserId = userId,
+                FamilyId = familyId,
+                FamilyCreatedAt = familyCreatedAt,
+                DeviceId = deviceId,
+                DeviceName = deviceName,
+                Platform = platform,
+                ExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenSettings.RefreshTokenExpiryDays),
+                CreatedByIp = ipAddress,
+                LastUsedIp = ipAddress
+            };
+
+            return (rawToken, entity);
         }
 
         private static bool IsUniqueConstraintViolation(DbUpdateException ex) =>

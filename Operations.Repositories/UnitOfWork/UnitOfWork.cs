@@ -13,6 +13,24 @@ namespace Operations.Repositories.UnitOfWork
         #region Main Methods Implementation
         public Task<int> CommitAsync(CancellationToken cancellationToken = default) => AppDbContext.Value.SaveChangesAsync(cancellationToken);
 
+        public async Task<int> ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken = default)
+        {
+            await using Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction =
+                await AppDbContext.Value.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                await operation(cancellationToken);
+                int result = await AppDbContext.Value.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return result;
+            }
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
+        }
+
         public void Dispose()
         {
 
@@ -25,6 +43,7 @@ namespace Operations.Repositories.UnitOfWork
         public IPasswordResetTokenRepository PasswordResetTokenRepository => new PasswordResetTokenRepository(AppDbContext);
         public IOutboxRepository OutboxRepository => new OutboxRepository(AppDbContext);
         public IProcessedMessageRepository ProcessedMessageRepository => new ProcessedMessageRepository(AppDbContext);
+        public IRefreshTokenRepository RefreshTokenRepository => new RefreshTokenRepository(AppDbContext);
         #endregion
 
     }

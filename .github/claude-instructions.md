@@ -70,11 +70,13 @@ This document also enables AI tools to generate code that is consistent with the
 **Tech Stack:**
 - C# / .NET 10, ASP.NET Core Web API
 - Entity Framework Core 10 + SQL Server
-- Hangfire 1.8.3 (background jobs)
+- Hangfire 1.8.3 (scheduled/on-demand background jobs)
+- JWT Bearer authentication (`Microsoft.AspNetCore.Authentication.JwtBearer`) + ASP.NET Core rate limiting
+- RabbitMQ.Client 7.x (Outbox/Inbox async email delivery pipeline) + Polly v8 (retry/circuit breaker)
 - Mapster 7.3.0 (object mapping via IRegister)
-- Swashbuckle / Swagger (development only)
+- Swashbuckle / Swagger (development only) with JWT Bearer "Authorize" support
 - Custom JSON-based localization (en/ar)
-- SMTP email via System.Net.Mail
+- SMTP email via System.Net.Mail (sent asynchronously through the Outbox pipeline, not inline)
 
 ---
 
@@ -115,12 +117,32 @@ This document also enables AI tools to generate code that is consistent with the
 - Static `HandleExceptionAsync` maps exception types to HTTP status codes via `is` pattern.
 - Error body is `JsonConvert.SerializeObject(ex.Message)` — a JSON string, not an object.
 
+### `authentication`
+**Purpose:** JWT issuance/validation, `[Authorize]` gating, and password-reset token handling.
+**Examples:** `Operations.Services/Auth/IJwtTokenGenerator.cs` / `JwtTokenGenerator.cs`, `Operations.Services/AuthService/AuthService.cs`, `Operations/Controllers/AuthController.cs`, `Operations.DataModel/Entities/PasswordResetToken.cs`
+**Conventions:**
+- Bearer scheme is the standard `JwtBearerDefaults.AuthenticationScheme` (`"Bearer"`) — no custom scheme name.
+- `JwtSettings.Secret` is **never** in `appsettings.json` — bind non-secret fields (`Issuer`, `Audience`, `ExpiryMinutes`, `ResetTokenExpiryMinutes`, `FrontEndBaseUrl`) from config, source the secret from user-secrets (dev) or the `JwtSettings__Secret` env var (prod), and fail fast at startup if it's missing (see `Program.cs`).
+- Do not inject `ClaimsPrincipal` into a service. Controllers extract the user id (`User.FindFirstValue(ClaimTypes.NameIdentifier)`) and pass it as a plain `string userId` parameter — e.g. `AuthController.ChangePassword`.
+- New endpoints/controllers are `[Authorize]` by default; use `[AllowAnonymous]` + `[EnableRateLimiting("auth")]` (or `"auth-login"`) only for the small set of unauthenticated auth endpoints (register/login/forgot/reset password).
+- Password reset tokens: generate `rawToken` as **Base64URL** (`Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+','-').Replace('/','_')`) so it's URL-safe with no escaping; persist only `TokenHash = SHA256(rawToken)` on `PasswordResetToken` — the raw token is never written to the DB, only emailed. On reset, recompute the hash of the received token and look up by `TokenHash`.
+- A user has at most one active reset token: before issuing a new one (`ForgotPassword`) and after consuming one (`ResetPassword`), mark all other active tokens for that user `IsUsed = true` via `IPasswordResetTokenRepository.GetActiveByUserIdAsync`.
+- Enforce password policy via `IValidatorHelper.ValidatePasswordPolicy(password)` (8+ chars, upper/lower/digit/special) in `Register`, `ChangePassword`, and `ResetPassword`.
+
+### `rate-limiting`
+**Purpose:** Per-IP throttling on unauthenticated, abuse-prone endpoints.
+**Examples:** `Program.cs` (`AddRateLimiter`), `[EnableRateLimiting("auth")]` on `AuthController` actions.
+**Conventions:**
+- Fixed-window policies keyed by `httpContext.Connection.RemoteIpAddress`, defined once in `Program.cs` (`"auth"` = 5 req/min, `"auth-login"` = 10 req/min), rejecting with HTTP 429.
+- Applied per-action via `[EnableRateLimiting("policyName")]` — never applied class-wide, since most controllers are fully authenticated and don't need it.
+
 ### `swagger-filters`
 **Purpose:** Augment Swagger operation metadata globally.
 **Examples:** `Operations/Filter/SwaggerHeaderFilter.cs`
 **Conventions:**
 - Implement `IOperationFilter`; null-check `operation.Parameters` before adding.
 - Registered globally via `c.OperationFilter<T>()` in `AddSwaggerGen`.
+- JWT Bearer support is already wired in `AddSwaggerGen` (`AddSecurityDefinition("Bearer", ...)` + `AddSecurityRequirement`) — don't re-add it. Note: this repo uses **Microsoft.OpenApi 2.x**, whose types live in the `Microsoft.OpenApi` namespace (not `Microsoft.OpenApi.Models`), and references use `OpenApiSecuritySchemeReference("Bearer", document)` rather than the older `OpenApiReference` pattern.
 
 ### `entities`
 **Purpose:** EF Core entity models.
@@ -267,17 +289,65 @@ This document also enables AI tools to generate code that is consistent with the
 
 ### `notification`
 **Purpose:** Email sending abstraction.
-**Examples:** `Common/Notification/Mail/MailSender.cs`
+**Examples:** `Common/Notification/Mail/MailSender.cs`, `Operations.Services/Email/ISmtpEmailSender.cs` / `SmtpEmailSender.cs`
 **Conventions:**
-- Use `IMailSender.SendMail(MailDto, MailSettingDto)` from services — never direct SmtpClient.
-- Prepare both DTOs with `PrepareMailDtos` before calling; commit Mail entity in the same `CommitAsync()` call as the business entity.
+- Application services (`AuthService`, `UserService`, etc.) **never call `MailSender.SendMail` directly and never send email synchronously**. They create a `Mail` entity (`MailStatusId = Draft`) plus an `OutboxMessage { Mail = mail }` and commit both in the same `CommitAsync()` call as the business entity — see `notification` + `outbox` conventions below.
+- Actual SMTP delivery happens only inside `EmailConsumer` (a `background-service`), via `ISmtpEmailSender.SendAsync(mail)`, which wraps `IMailSender` and rethrows on failure so `EmailResiliencePipeline` can classify/retry it.
+- `IMailSender.SendMail(MailDto, MailSettingDto)` / `PrepareMailDtos` remain the low-level SMTP wrapper — only `SmtpEmailSender` may call them.
 
-### `background-jobs` (service side)
-**Purpose:** Hangfire job definitions.
+### `background-jobs` (Hangfire — service side)
+**Purpose:** Scheduled or on-demand job definitions (Hangfire), for finite units of work triggered by a schedule or an explicit dispatch call.
 **Examples:** `Operations.Services/Job/JobService.cs`
 **Conventions:**
 - `IJobService` / `JobService` hold job body logic.
 - Job methods are `void`, not `Task`.
+- Dispatched via `IBackgroundJobClient` / `IRecurringJobManager` from a controller action — never call the job method directly.
+- Use Hangfire for "run this once/on a schedule" work. For continuous stream processing (queue consumers, connection managers), use `background-service` instead — see below.
+
+### `background-service` (BackgroundService — continuous infrastructure)
+**Purpose:** Long-running, always-on processes tied to the app's own lifetime: RabbitMQ consumers, connection managers, and pollers. These are infrastructure, not scheduled jobs, so they use `BackgroundService`/`IHostedService`, not Hangfire.
+**Examples:** `Operations.Services/Outbox/OutboxPublisherService.cs`, `Operations.Services/Email/EmailConsumer.cs`, `Operations.Services/Email/DeadLetterHandler.cs`, `Operations.Services/Messaging/RabbitConnectionManager.cs`
+**Conventions:**
+- Extend `BackgroundService`; inject `IServiceScopeFactory` and open an `AsyncServiceScope` per unit of work (batch/message) to resolve scoped services like `IUnitOfWork` — never resolve scoped services from the constructor.
+- Consumers wait for `RabbitConnectionManager.IsConnected` before creating a channel, then `await Task.Delay(Timeout.Infinite, stoppingToken)` after `BasicConsumeAsync` to stay alive.
+- Override `StopAsync` to close the channel and `Dispose` to dispose it; always call `base.StopAsync`/`base.Dispose`.
+- Pollers (`OutboxPublisherService`) loop `while (!stoppingToken.IsCancellationRequested)`, wrapping each iteration in try/catch so one bad batch doesn't kill the loop, then `await Task.Delay(pollIntervalMs, stoppingToken)`.
+- Registered via `builder.Services.AddHostedService<T>()` in `Program.cs`.
+
+### `messaging` (RabbitMQ)
+**Purpose:** RabbitMQ connection lifecycle, publishing, and topology declaration for the async email pipeline.
+**Examples:** `Operations.Services/Messaging/RabbitConnectionManager.cs`, `IRabbitPublisher.cs` / `RabbitPublisher.cs`, `RabbitTopologyDeclarator.cs`
+**Conventions:**
+- `RabbitConnectionManager` is the single `IHostedService` owning the `IConnection`; it connects with backoff retry in the background and never blocks host startup. Other components get channels via `GetConnection().CreateChannelAsync(...)`, never open their own `IConnection`.
+- `RabbitPublisher` uses Publisher Confirms (`WaitForConfirmsOrDieAsync`) — a publish is only considered successful once confirmed.
+- Topology (exchange + `email.send`/`email.retry`/`email.deadletter` queues and dead-letter bindings) is declared once via `RabbitTopologyDeclarator.DeclareAsync`, driven entirely by `RabbitMqSettings` config — no hardcoded queue/exchange names in consumers.
+- Retry is DLX-based, not application-level: a NACKed transient failure routes to `email.retry` (TTL) which dead-letters back to `email.send` — do not hand-roll retry loops in a consumer.
+
+### `outbox` (Transactional Outbox / Inbox pattern)
+**Purpose:** Guarantees no committed email is lost and no message is processed twice.
+**Examples:** `Operations.DataModel/Entities/OutboxMessage.cs`, `ProcessedMessage.cs`, `Operations.Services/Outbox/OutboxPublisherService.cs`
+**Conventions:**
+- Outbox (publish-side): create `OutboxMessage { Mail = mail }` in the same `CommitAsync()` as the `Mail`/business entity — never publish to RabbitMQ directly from a request-handling service.
+- `OutboxStatus` has no `Failed` state: `Pending → Publishing → Published`; a publish failure resets the row back to `Pending` (with `RetryCount`/`LastError`) for the next poll, it never gets stuck or silently dropped.
+- Inbox (consume-side): before processing, check `ProcessedMessageRepository.ExistsAsync(messageId)`; after success, `Create(new ProcessedMessage { MessageId, ProcessedAt })` in the same commit as the success state update. This is the source of truth for idempotency — do not dedupe off `Mail.MailStatusId` alone.
+- `Mail` carries two independent status dimensions: `MailStatusId` (business: Draft/Sent/Failed) and `DeliveryStatus` (infra: Pending/Queued/Processing/Retrying/DeadLetter) — do not conflate them.
+- Message envelope shape is fixed: `{ MessageId: <guid>, MailId: <int>, OccurredAt: <UTC> }`.
+
+### `resilience`
+**Purpose:** Wraps flaky external calls (SMTP) with retry + circuit breaking so a struggling dependency doesn't get hammered or take down the consumer.
+**Examples:** `Operations.Services/Email/EmailResiliencePipeline.cs`
+**Conventions:**
+- Built with Polly v8 (`ResiliencePipelineBuilder`) — `AddRetry` then `AddCircuitBreaker`, both driven by `EmailDeliverySettings.Resilience`, no hardcoded thresholds.
+- Classify failures as transient vs permanent explicitly (`IsTransientFailure`/`IsPermanentFailure` pattern-matching on exception type/SMTP status code) — never retry a permanent failure (e.g. 5xx SMTP, auth failure).
+- Callers check `IsCircuitOpen()` before attempting the call so they can reroute to the retry queue instead of throwing; also catch `BrokenCircuitException` as a fallback.
+
+### `health-checks`
+**Purpose:** `/health` readiness probes for the messaging/outbox infrastructure.
+**Examples:** `Operations.Services/HealthChecks/RabbitMqHealthCheck.cs`, `OutboxBacklogHealthCheck.cs`
+**Conventions:**
+- Implement `IHealthCheck`; constructor-inject only what's needed to check (e.g. `RabbitConnectionManager`, `IUnitOfWork`).
+- Registered via `AddHealthChecks().AddCheck<T>("name", tags: ["ready"])` in `Program.cs`; exposed via `app.MapHealthChecks("/health")`.
+- Prefer graded results (`Healthy`/`Degraded`/`Unhealthy`) with a numeric threshold over a plain up/down check when a backlog or queue depth is involved.
 
 ---
 
@@ -336,14 +406,28 @@ This document also enables AI tools to generate code that is consistent with the
 - **No business logic in controllers** — delegate everything to the service.
 - **No try/catch in controllers** — the middleware handles it.
 - **SwaggerHeaderFilter adds Accept-Language automatically** — do not add it to individual operations.
+- **`[Authorize]` by default** — new controllers/actions require auth unless there's a specific reason (e.g. the 4 public auth endpoints) to mark `[AllowAnonymous]`.
 
-### Notification
-- **Atomic persistence** — Mail entity and business entity must be committed in the same `CommitAsync()`.
-- **Use IMailSender** — never instantiate `SmtpClient` in application code.
+### Authentication
+- **No custom JWT scheme** — standard `JwtBearerDefaults.AuthenticationScheme` (`"Bearer"`).
+- **Secret never in appsettings.json** — `JwtSettings.Secret` comes from user-secrets (dev) or `JwtSettings__Secret` env var (prod) only; the app throws at startup if it's missing.
+- **No `ClaimsPrincipal` in services** — controllers extract `userId` from claims and pass it as a plain parameter.
+- **Reset tokens are hashed at rest** — only `SHA256(rawToken)` is ever persisted (`PasswordResetToken.TokenHash`); the raw token exists only in the emailed link. Generate it as Base64URL, not plain Base64, so it never needs URL-escaping.
+- **One active reset token per user** — issuing or consuming a token revokes (`IsUsed = true`) all other active tokens for that user in the same commit.
+
+### Notification / Email Delivery
+- **Never send email inline** — application services create `Mail` (Draft) + `OutboxMessage` and commit both atomically; they never call `MailSender`/`ISmtpEmailSender` directly.
+- **Outbox → RabbitMQ → Consumer** — `OutboxPublisherService` polls and publishes to RabbitMQ (with Publisher Confirms); `EmailConsumer` does the actual SMTP send via `ISmtpEmailSender`, guarded by `EmailResiliencePipeline` (retry + circuit breaker) and inbox-deduplicated via `ProcessedMessage`.
+- **Retry is DLX-based** — a NACKed transient failure routes through `email.retry` (TTL) back to `email.send`; don't hand-roll retry/backoff loops in a consumer.
+- **Use IMailSender** (only from `SmtpEmailSender`) — never instantiate `SmtpClient` directly anywhere.
 
 ### Background Jobs
-- **Hangfire only** — do not use `IHostedService` or `BackgroundService` for scheduled work.
+- **Hangfire = scheduled/on-demand work** (`IJobService`, dispatched via `IBackgroundJobClient`/`IRecurringJobManager`).
+- **BackgroundService/IHostedService = continuous infrastructure** — RabbitMQ consumers (`EmailConsumer`, `DeadLetterHandler`), pollers (`OutboxPublisherService`), and connection managers (`RabbitConnectionManager`) are intentionally `BackgroundService`/`IHostedService`, not Hangfire — they run for the app's whole lifetime rather than as discrete scheduled units. Don't migrate these to Hangfire, and don't use Hangfire for new continuous stream-processing work either.
 - **Job logic in IJobService** — not inlined in controller lambda bodies.
+
+### Rate Limiting
+- **Per-IP fixed-window, config-defined policies** (`"auth"`, `"auth-login"`) in `Program.cs`, applied via `[EnableRateLimiting("policy")]` on individual actions — only on unauthenticated, abuse-prone endpoints.
 
 ### IoC
 - **Constructor injection only** — no `[FromServices]`, no service locator.
@@ -393,9 +477,12 @@ Then run `dotnet ef migrations add AddProductEntity` in `Operations.Repositories
 
 - MVC views, Razor Pages, or any HTML rendering.
 - AutoMapper registrations — use Mapster `IRegister`.
-- `IHostedService` / `BackgroundService` — use Hangfire.
+- `IHostedService` / `BackgroundService` for **scheduled or on-demand** work — use Hangfire for that. (`BackgroundService`/`IHostedService` IS the correct tool for continuous infra — RabbitMQ consumers, pollers, connection managers — see `background-service` category; don't flag or "fix" those.)
 - `.resx` files or `IStringLocalizer` — use the JSON localization system.
-- Direct `SmtpClient` usage in services — use `IMailSender`.
+- Direct `SmtpClient` usage anywhere — use `IMailSender` (and only call it from `SmtpEmailSender`).
+- Synchronous/inline email sending from application services — create `Mail` + `OutboxMessage` and let the Outbox/RabbitMQ pipeline deliver it.
+- Raw password-reset tokens persisted to the database — store only `SHA256(rawToken)`; the raw token exists solely in the emailed link.
+- `ClaimsPrincipal` injected into a service constructor — extract the user id in the controller and pass it as a parameter.
 - Repositories that access `AppDbContext` without going through `Lazy<AppDbContext>`.
 - Controllers with try/catch blocks or business logic.
 - Data annotations (`[Required]`, `[MaxLength]`) on entities — use Fluent API configurations.

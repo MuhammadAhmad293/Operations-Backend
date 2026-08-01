@@ -17,6 +17,12 @@
         string RegistrationSuccess { get; }
         string PasswordMismatch { get; }
         string PasswordPolicyViolation { get; }
+        string InvalidRefreshToken { get; }
+        string RefreshTokenConflict { get; }
+        string SessionExpired { get; }
+        string LogoutSuccess { get; }
+        string LogoutAllSuccess { get; }
+        string MaxActiveDevicesReached { get; }
 
     }
 }

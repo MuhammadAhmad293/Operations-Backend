@@ -6,6 +6,7 @@ namespace Operations.IRepositories.UnitOfWork
     {
         #region Main Methods
         Task<int> CommitAsync(CancellationToken cancellationToken = default);
+        Task<int> ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken = default);
         #endregion
 
         #region IRepository
@@ -14,6 +15,7 @@ namespace Operations.IRepositories.UnitOfWork
         public IPasswordResetTokenRepository PasswordResetTokenRepository { get; }
         public IOutboxRepository OutboxRepository { get; }
         public IProcessedMessageRepository ProcessedMessageRepository { get; }
+        public IRefreshTokenRepository RefreshTokenRepository { get; }
         #endregion
     }
 }

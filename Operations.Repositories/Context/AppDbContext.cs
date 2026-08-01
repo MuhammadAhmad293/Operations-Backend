@@ -31,6 +31,7 @@ namespace Operations.Repositories.Context
         public DbSet<PasswordResetToken> PasswordResetToken { get; set; }
         public DbSet<OutboxMessage> OutboxMessage { get; set; }
         public DbSet<ProcessedMessage> ProcessedMessage { get; set; }
+        public DbSet<RefreshToken> RefreshToken { get; set; }
 
     }
 }

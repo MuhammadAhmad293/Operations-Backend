@@ -6,5 +6,6 @@
         void ReccuringJob();
         void DelayedJob();
         void ContinuationJob();
+        void CleanupExpiredRefreshTokens();
     }
 }

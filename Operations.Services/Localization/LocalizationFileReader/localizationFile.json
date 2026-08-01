@@ -103,5 +103,47 @@
       "en": "Password must be at least 8 characters and contain uppercase, lowercase, digit, and special character",
       "ar": "يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل وتتضمن حرفاً كبيراً وصغيراً ورقماً وحرفاً خاصاً"
     }
+  },
+  {
+    "Key": "InvalidRefreshToken",
+    "LocalizedValue": {
+      "en": "Refresh token is invalid or has expired",
+      "ar": "رمز التحديث غير صالح أو منتهي الصلاحية"
+    }
+  },
+  {
+    "Key": "RefreshTokenConflict",
+    "LocalizedValue": {
+      "en": "This refresh token was just used by another request",
+      "ar": "تم استخدام رمز التحديث هذا للتو بواسطة طلب آخر"
+    }
+  },
+  {
+    "Key": "SessionExpired",
+    "LocalizedValue": {
+      "en": "Your session has expired, please log in again",
+      "ar": "انتهت صلاحية جلستك، يرجى تسجيل الدخول مرة أخرى"
+    }
+  },
+  {
+    "Key": "LogoutSuccess",
+    "LocalizedValue": {
+      "en": "Logged out successfully",
+      "ar": "تم تسجيل الخروج بنجاح"
+    }
+  },
+  {
+    "Key": "LogoutAllSuccess",
+    "LocalizedValue": {
+      "en": "Logged out from all devices successfully",
+      "ar": "تم تسجيل الخروج من جميع الأجهزة بنجاح"
+    }
+  },
+  {
+    "Key": "MaxActiveDevicesReached",
+    "LocalizedValue": {
+      "en": "Maximum number of active devices reached, please log out from another device first",
+      "ar": "تم الوصول إلى الحد الأقصى لعدد الأجهزة النشطة، يرجى تسجيل الخروج من جهاز آخر أولاً"
+    }
   }
 ]

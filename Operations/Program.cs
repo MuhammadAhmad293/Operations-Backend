@@ -7,6 +7,7 @@ using Common.Validator;
 using Operations;
 using Operations.Filter;
 using Operations.Repositories.Resolver;
+using Operations.IServices.IJob;
 using Operations.Services.Email;
 using Operations.Services.HealthChecks;
 using Operations.Services.Mapper;
@@ -67,6 +68,10 @@ if (string.IsNullOrWhiteSpace(jwtSettings.Secret))
         "Set it via 'dotnet user-secrets' (dev) or the JwtSettings__Secret environment variable (prod).");
 builder.Services.AddSingleton(jwtSettings);
 
+RefreshTokenSettings refreshTokenSettings = new();
+builder.Configuration.Bind("RefreshTokenSettings", refreshTokenSettings);
+builder.Services.AddSingleton(refreshTokenSettings);
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -104,6 +109,17 @@ builder.Services.AddRateLimiter(options =>
             {
                 Window = TimeSpan.FromMinutes(1),
                 PermitLimit = 10,
+                QueueLimit = 0
+            }));
+
+    // 30 req/min per IP — refresh-token is called automatically/frequently by legitimate clients
+    options.AddPolicy("auth-refresh", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 30,
                 QueueLimit = 0
             }));
 
@@ -185,7 +201,11 @@ if (app.Environment.IsDevelopment())//
     });
 }
 
-app.UseCors(options => options.WithOrigins("http://localhost:4200").AllowAnyMethod().AllowAnyHeader());
+app.UseCors(options => options
+    .WithOrigins("https://localhost:4200")
+    .AllowAnyMethod()
+    .AllowAnyHeader()
+    .AllowCredentials());
 
 app.UseHttpsRedirection();//
 
@@ -214,5 +234,14 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 
 app.UseHangfireDashboard();
+
+using (IServiceScope startupScope = app.Services.CreateScope())
+{
+    IRecurringJobManager recurringJobManager = startupScope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+    recurringJobManager.AddOrUpdate<IJobService>(
+        "cleanup-refresh-tokens",
+        js => js.CleanupExpiredRefreshTokens(),
+        Cron.Daily);
+}
 
 app.Run();

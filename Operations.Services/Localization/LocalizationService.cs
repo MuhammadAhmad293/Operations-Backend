@@ -19,6 +19,12 @@
         public string RegistrationSuccess => GetKeyValue("RegistrationSuccess", "altValue");
         public string PasswordMismatch => GetKeyValue("PasswordMismatch", "altValue");
         public string PasswordPolicyViolation => GetKeyValue("PasswordPolicyViolation", "altValue");
+        public string InvalidRefreshToken => GetKeyValue("InvalidRefreshToken", "altValue");
+        public string RefreshTokenConflict => GetKeyValue("RefreshTokenConflict", "altValue");
+        public string SessionExpired => GetKeyValue("SessionExpired", "altValue");
+        public string LogoutSuccess => GetKeyValue("LogoutSuccess", "altValue");
+        public string LogoutAllSuccess => GetKeyValue("LogoutAllSuccess", "altValue");
+        public string MaxActiveDevicesReached => GetKeyValue("MaxActiveDevicesReached", "altValue");
 
     }
 }
