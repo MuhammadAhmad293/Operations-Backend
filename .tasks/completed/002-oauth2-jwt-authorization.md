@@ -25,8 +25,8 @@ Add a complete authentication and authorization layer using JWT Bearer tokens. U
 
 ```json
 "JwtSettings": {
-  "Issuer": "OperationsApi",
-  "Audience": "OperationsClient",
+  "Issuer": "MeezanApi",
+  "Audience": "MeezanClient",
   "ExpiryMinutes": 15,
   "ResetTokenExpiryMinutes": 60
   // Secret: set via user-secrets (dev) or env var JwtSettings__Secret (prod). Min 32 chars.
@@ -103,9 +103,9 @@ Returns HTTP 429 on breach. Applied via `[EnableRateLimiting("auth")]` on indivi
 Migration is an explicit sub-task (3a) with documented rollback:
 
 ```
-Up:       dotnet ef migrations add AddPasswordResetToken --project Operations.Repositories
-Rollback (before apply): dotnet ef migrations remove --project Operations.Repositories
-Rollback (after apply):  dotnet ef database update <previous-migration-name> --project Operations.Repositories
+Up:       dotnet ef migrations add AddPasswordResetToken --project Meezan.Repositories
+Rollback (before apply): dotnet ef migrations remove --project Meezan.Repositories
+Rollback (after apply):  dotnet ef database update <previous-migration-name> --project Meezan.Repositories
 ```
 
 Migration file must be inspected as part of Sub-task 3a approval.
@@ -182,42 +182,42 @@ New localization key: `PasswordPolicyViolation` — returns the specific rule th
 
 ## New Files
 
-| File                                                                             | Category              |
-| -------------------------------------------------------------------------------- | --------------------- |
-| `Operations.DataModel/Entities/PasswordResetToken.cs`                            | entities              |
-| `Operations.Repositories/EntityConfiguration/PasswordResetTokenConfiguration.cs` | entity-configurations |
-| `Operations.IRepositories/IRepository/IPasswordResetTokenRepository.cs`          | repository-interfaces |
-| `Operations.Repositories/Repository/PasswordResetTokenRepository.cs`             | repositories          |
-| `Operations.Dto/DTOs/Auth/RegisterDto.cs`                                        | dtos                  |
-| `Operations.Dto/DTOs/Auth/LoginDto.cs`                                           | dtos                  |
-| `Operations.Dto/DTOs/Auth/LoginResponseDto.cs`                                   | dtos                  |
-| `Operations.Dto/DTOs/Auth/ChangePasswordDto.cs`                                  | dtos                  |
-| `Operations.Dto/DTOs/Auth/ForgotPasswordDto.cs`                                  | dtos                  |
-| `Operations.Dto/DTOs/Auth/ResetPasswordDto.cs`                                   | dtos                  |
-| `Operations.Services/Auth/IJwtTokenGenerator.cs`                                 | service-interfaces    |
-| `Operations.Services/Auth/JwtTokenGenerator.cs`                                  | services              |
-| `Operations.IServices/IService/IAuthService.cs`                                  | service-interfaces    |
-| `Operations.Services/AuthService/AuthService.cs`                                 | services              |
-| `Operations/Controllers/AuthController.cs`                                       | api-controllers       |
-| `Operations.Services/Setting/JwtSettings.cs`                                     | settings-models       |
+| File                                                                         | Category              |
+| ---------------------------------------------------------------------------- | --------------------- |
+| `Meezan.DataModel/Entities/PasswordResetToken.cs`                            | entities              |
+| `Meezan.Repositories/EntityConfiguration/PasswordResetTokenConfiguration.cs` | entity-configurations |
+| `Meezan.IRepositories/IRepository/IPasswordResetTokenRepository.cs`          | repository-interfaces |
+| `Meezan.Repositories/Repository/PasswordResetTokenRepository.cs`             | repositories          |
+| `Meezan.Dto/DTOs/Auth/RegisterDto.cs`                                        | dtos                  |
+| `Meezan.Dto/DTOs/Auth/LoginDto.cs`                                           | dtos                  |
+| `Meezan.Dto/DTOs/Auth/LoginResponseDto.cs`                                   | dtos                  |
+| `Meezan.Dto/DTOs/Auth/ChangePasswordDto.cs`                                  | dtos                  |
+| `Meezan.Dto/DTOs/Auth/ForgotPasswordDto.cs`                                  | dtos                  |
+| `Meezan.Dto/DTOs/Auth/ResetPasswordDto.cs`                                   | dtos                  |
+| `Meezan.Services/Auth/IJwtTokenGenerator.cs`                                 | service-interfaces    |
+| `Meezan.Services/Auth/JwtTokenGenerator.cs`                                  | services              |
+| `Meezan.IServices/IService/IAuthService.cs`                                  | service-interfaces    |
+| `Meezan.Services/AuthService/AuthService.cs`                                 | services              |
+| `Meezan/Controllers/AuthController.cs`                                       | api-controllers       |
+| `Meezan.Services/Setting/JwtSettings.cs`                                     | settings-models       |
 
 ## Modified Files
 
-| File                                                                            | Change                                                        |
-| ------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `Operations.Repositories/Context/AppDbContext.cs`                               | Add `DbSet<PasswordResetToken>`                               |
-| `Operations.IRepositories/UnitOfWork/IUnitOfWork.cs`                            | Add `IPasswordResetTokenRepository` property                  |
-| `Operations.Repositories/UnitOfWork/UnitOfWork.cs`                              | Add repository property                                       |
-| `Operations.Services/Resolver/CoreServicesResolver.cs`                          | Register `IAuthService`, `IJwtTokenGenerator`                 |
-| `Operations/Program.cs`                                                         | Add JWT auth middleware, `AddRateLimiter`, bind `JwtSettings` |
-| `Operations/Operations.csproj`                                                  | Add `Microsoft.AspNetCore.Authentication.JwtBearer`           |
-| `Operations/appsettings.json`                                                   | Add `JwtSettings` block (no secret value)                     |
-| `Common/Validator/IValidatorHelper.cs`                                          | Add `ValidatePasswordPolicy(string password)`                 |
-| `Common/Validator/ValidatorHelper.cs`                                           | Implement `ValidatePasswordPolicy`                            |
-| `Operations.Services/Localization/LocalizationFileReader/localizationFile.json` | Add auth + policy keys                                        |
-| `Operations.Services/Localization/ILocalizationService.cs`                      | Expose new keys                                               |
-| `Operations.Services/Localization/LocalizationService.cs`                       | Implement new keys                                            |
-| `Operations/Controllers/UserController.cs`                                      | Add `[Authorize]` to all actions                              |
+| File                                                                        | Change                                                        |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `Meezan.Repositories/Context/AppDbContext.cs`                               | Add `DbSet<PasswordResetToken>`                               |
+| `Meezan.IRepositories/UnitOfWork/IUnitOfWork.cs`                            | Add `IPasswordResetTokenRepository` property                  |
+| `Meezan.Repositories/UnitOfWork/UnitOfWork.cs`                              | Add repository property                                       |
+| `Meezan.Services/Resolver/CoreServicesResolver.cs`                          | Register `IAuthService`, `IJwtTokenGenerator`                 |
+| `Meezan/Program.cs`                                                         | Add JWT auth middleware, `AddRateLimiter`, bind `JwtSettings` |
+| `Meezan/Meezan.csproj`                                                      | Add `Microsoft.AspNetCore.Authentication.JwtBearer`           |
+| `Meezan/appsettings.json`                                                   | Add `JwtSettings` block (no secret value)                     |
+| `Common/Validator/IValidatorHelper.cs`                                      | Add `ValidatePasswordPolicy(string password)`                 |
+| `Common/Validator/ValidatorHelper.cs`                                       | Implement `ValidatePasswordPolicy`                            |
+| `Meezan.Services/Localization/LocalizationFileReader/localizationFile.json` | Add auth + policy keys                                        |
+| `Meezan.Services/Localization/ILocalizationService.cs`                      | Expose new keys                                               |
+| `Meezan.Services/Localization/LocalizationService.cs`                       | Implement new keys                                            |
+| `Meezan/Controllers/UserController.cs`                                      | Add `[Authorize]` to all actions                              |
 
 ---
 

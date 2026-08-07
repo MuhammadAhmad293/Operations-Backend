@@ -1,4 +1,4 @@
-﻿using Operations.Repositories.Context;
+﻿using Meezan.Repositories.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 

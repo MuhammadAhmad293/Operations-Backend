@@ -20,7 +20,7 @@
       "response-wrapper": "Every public service method returns ResponseDto<T>. Success/error state is expressed via GetSuccessResponse() / GetErrorResponse() fluent methods — HTTP status codes are not set here.",
       "validation-via-exceptions": "Input validation in services throws typed custom exceptions (NameRequiredException, InvalidRequestException, ObjectNotFoundException); the middleware translates these to HTTP 400/404/500.",
       "unit-of-work-commit": "All writes (create/update/delete) are staged through the repository but only persisted by calling await UnitOfWork.CommitAsync(); the return value (> default(int)) is used to determine success.",
-      "mapster-mapping": "Object mapping uses Mapster via the injected IMapper (from BaseService). New entity-to-DTO or DTO-to-entity mappings are registered in Operations.Services/Mapper/ using IRegister."
+      "mapster-mapping": "Object mapping uses Mapster via the injected IMapper (from BaseService). New entity-to-DTO or DTO-to-entity mappings are registered in Meezan.Services/Mapper/ using IRegister."
     },
     "architectural_constraints": {
       "no-ef-in-services": "Services must never reference AppDbContext or EF types directly; all persistence goes through IUnitOfWork.",
@@ -34,7 +34,7 @@
       "base-repository": "All repositories extend BaseRepository<T>, which provides CRUD methods (CreateAsyn, Update, Delete, FirstOrDefaultAsync, GetAllAsync) backed by Lazy<AppDbContext>.",
       "lazy-dbcontext": "AppDbContext is injected as Lazy<AppDbContext> into repositories and UnitOfWork to defer materialisation until the first database call.",
       "unit-of-work": "UnitOfWork implements IUnitOfWork; each repository property instantiates a new repository passing the shared Lazy<AppDbContext>. CommitAsync() calls SaveChangesAsync().",
-      "entity-configuration": "Every entity has a corresponding IEntityTypeConfiguration<T> in Operations.Repositories/EntityConfiguration/ using Fluent API. All audit columns (CreationTime, LastModificationTime, IsDeleted) are configured with SQL defaults (GETDATE(), false).",
+      "entity-configuration": "Every entity has a corresponding IEntityTypeConfiguration<T> in Meezan.Repositories/EntityConfiguration/ using Fluent API. All audit columns (CreationTime, LastModificationTime, IsDeleted) are configured with SQL defaults (GETDATE(), false).",
       "table-naming": "AppDbContext.SingularizeTableNames ensures table names match the entity class name (not pluralised EF default).",
       "data-seeding": "Lookup/reference data (MailStatus, MailType) is seeded via the modelBuilder.SeedInitialData() extension in InitialDataSeeding.cs.",
       "base-entity-inheritance": "All entities must inherit BaseEntity (provides IsDeleted, CreationTime, LastModificationTime). Multilingual lookup entities use BaseMultilingualTextEntity (adds EnName, ArName, EnDescription, ArDescription)."
@@ -46,7 +46,7 @@
     }
   },
   "notification": {
-    "description": "Transactional email abstraction. Used to send and log emails atomically with business operations.",
+    "description": "Transactional email abstraction. Used to send and log emails atomically with business Meezan.",
     "required_patterns": {
       "mail-sender": "Email is sent via the IMailSender interface (injected into services). MailSender wraps System.Net.Mail / SMTP.",
       "mail-entity-logging": "Every sent email creates a Mail entity that is committed to the database in the same UnitOfWork transaction as the triggering business operation.",
@@ -101,7 +101,7 @@
       "no-controller-try-catch": "Controllers do not contain try/catch; exception handling is entirely the middleware's responsibility."
     },
     "architectural_constraints": {
-      "new-exceptions-in-services": "New custom exception types must be placed in Operations.Services/CustomExceptions/ and mapped in ErrorHandlingMiddleware.",
+      "new-exceptions-in-services": "New custom exception types must be placed in Meezan.Services/CustomExceptions/ and mapped in ErrorHandlingMiddleware.",
       "json-error-body": "Error responses are a JSON-serialised string (not an object); do not change this shape without updating consumers."
     }
   }

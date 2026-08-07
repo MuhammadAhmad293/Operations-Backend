@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Operations.Repositories\Operations.Repositories.csproj" />
+    <ProjectReference Include="..\Meezan.Repositories\Meezan.Repositories.csproj" />
   </ItemGroup>
 
 </Project>

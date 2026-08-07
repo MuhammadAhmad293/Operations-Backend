@@ -392,11 +392,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Operations-Backend\\Common\\Common.csproj",
+      "projectUniqueName": "D:\\Meezan\\Meezan-Backend\\Common\\Common.csproj",
       "projectName": "Common",
-      "projectPath": "D:\\Operations-Backend\\Common\\Common.csproj",
+      "projectPath": "D:\\Meezan\\Meezan-Backend\\Common\\Common.csproj",
       "packagesPath": "C:\\Users\\lenovo\\.nuget\\packages\\",
-      "outputPath": "D:\\Operations-Backend\\Common\\obj\\",
+      "outputPath": "D:\\Meezan\\Meezan-Backend\\Common\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

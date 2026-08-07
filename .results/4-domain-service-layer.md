@@ -1,6 +1,7 @@
 # Domain Deep Dive: Service Layer
 
 ## Overview
+
 The service layer contains all business logic. Every service inherits `BaseService`, which provides the three shared infrastructure concerns: `IUnitOfWork`, `IMapper` (Mapster), and `ILocalizationService`.
 
 ---
@@ -46,6 +47,7 @@ return response.GetSuccessResponse(MapUserDto(user));
 ```
 
 `ResponseDto<T>` carries:
+
 - `Status` (`ResponseStatus.Success` or `ResponseStatus.Error`)
 - `Message` (nullable string, localised)
 - `Data` (typed result payload, null on error)
@@ -71,8 +73,9 @@ if (string.IsNullOrWhiteSpace(userDto.Email))
 ## Write Flow (Create / Update / Delete)
 
 All writes follow the same three-step pattern:
+
 1. Stage the operation on the repository (no await — repositories are sync-enqueue).
-2. Optionally stage related operations (e.g., Mail entity).
+2. Optionally stage related Meezan (e.g., Mail entity).
 3. Commit everything in one call — check the affected-rows count:
 
 ```csharp
@@ -90,11 +93,13 @@ return response.GetErrorResponse(Localization.GeneralError);
 ## Mapster Mapping
 
 Object mapping uses Mapster. The `IMapper` (injected via `BaseService`) is used for simple cases:
+
 ```csharp
 User user = Mapper.Map<User>(request);
 ```
 
-Custom mappings are registered via `IRegister` in `Operations.Services/Mapper/`:
+Custom mappings are registered via `IRegister` in `Meezan.Services/Mapper/`:
+
 ```csharp
 public class UserMapper : IRegister
 {
@@ -114,6 +119,7 @@ The assembly is scanned in `CoreServicesResolver.ResolveMapper()`.
 ## Password Hashing
 
 Passwords are hashed using `IPasswordHash` (injected) before storage:
+
 ```csharp
 user.Password = PasswordHash.CreateHash(request.Password);
 ```
@@ -125,6 +131,7 @@ user.Password = PasswordHash.CreateHash(request.Password);
 ## DI Registration
 
 Services are registered as Scoped in `CoreServicesResolver.ResolveCoreServices`:
+
 ```csharp
 services.AddScoped<IUserService, UserService.UserService>();
 services.AddScoped<ILocalizationService, LocalizationService>();

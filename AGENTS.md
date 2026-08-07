@@ -1,4 +1,4 @@
-# AI Agent Guidance for Operations Backend
+# AI Agent Guidance for Meezan Backend
 
 This is a .NET 10 Clean Architecture / Layered backend system. AI agents should refer to [REPOSITORY_GUIDE.md](REPOSITORY_GUIDE.md) for architectural details, request lifecycle, and project philosophy.
 
@@ -15,43 +15,46 @@ This is a .NET 10 Clean Architecture / Layered backend system. AI agents should 
 **Target Framework:** .NET 10
 
 **Requirements:**
+
 - SQL Server running on `localhost` (any edition: Express, Developer, Standard, etc.)
 - A SQL Server login with appropriate credentials
 
 **Connection string files to configure (both must use SQL Server format):**
-1. `Operations/appsettings.json` — `DBConString` and `HFDBConString` (creates two databases: `Operation` and `HangfireOperation`)
+
+1. `Meezan/appsettings.json` — `DBConString` and `HFDBConString` (creates two databases: `Operation` and `HangfireOperation`)
 2. `EFCoreMigrationExcution/appsettings.json` — `DBConString` (used by the migration runner)
 
 Format: `Server=localhost;Initial Catalog=<db>;User Id=<user>;Password=<pass>;TrustServerCertificate=True`
 
 **Steps to get running:**
-1. `dotnet restore Operations.sln`
+
+1. `dotnet restore Meezan.sln`
 2. `dotnet run --project EFCoreMigrationExcution` — creates DB and applies all migrations
-3. `dotnet run --project Operations` — starts the API (Swagger UI at `/`, Hangfire dashboard at `/hangfire`)
+3. `dotnet run --project Meezan` — starts the API (Swagger UI at `/`, Hangfire dashboard at `/hangfire`)
 
 ## Project Structure & Layer Responsibilities
 
 ```
-Operations/               → API Controllers, Middlewares, Swagger, Settings
+Meezan/               → API Controllers, Middlewares, Swagger, Settings
 ├─ Controllers/         → Only HTTP orchestration; delegate to IServices
 ├─ Program.cs          → DI registration via static Resolver classes
 └─ ErrorHandlingMiddleware.cs → Global exception mapping
 
-Operations.Services/     → Business Logic (validation, mapping, orchestration)
+Meezan.Services/     → Business Logic (validation, mapping, orchestration)
 ├─ UserService.cs       → Example showing standard pattern
 ├─ Resolver/            → CoreServicesResolver.cs (DI bindings)
 └─ Mapper/             → Mapster configuration
 
-Operations.Repositories/ → Data Access (EF Core, DbContext, Migrations)
+Meezan.Repositories/ → Data Access (EF Core, DbContext, Migrations)
 ├─ AppDbContext.cs      → Entity configuration via IEntityTypeConfiguration
 ├─ UnitOfWork.cs        → Transaction boundary; always call CommitAsync()
 ├─ Migrations/          → EF migrations directory
 └─ Resolver/            → UnitOfWorkResolver.cs (DI bindings)
 
-Operations.DataModel/    → Domain Entities (POCOS; no behavior)
-Operations.Dto/          → Request/Response DTOs (API contracts)
-Operations.IServices/    → Service Abstractions
-Operations.IRepositories/ → Repository & UnitOfWork Abstractions
+Meezan.DataModel/    → Domain Entities (POCOS; no behavior)
+Meezan.Dto/          → Request/Response DTOs (API contracts)
+Meezan.IServices/    → Service Abstractions
+Meezan.IRepositories/ → Repository & UnitOfWork Abstractions
 Common/                  → Cross-cutting utilities (PasswordHash, HttpClient, MailSender)
 ```
 
@@ -69,12 +72,12 @@ API Controller → IService (DTOs) → Mapster → Entity → UnitOfWork.CommitA
 
 ### 2. Service Implementation Pattern
 
-When working in `Operations.Services/{Feature}Service.cs`:
+When working in `Meezan.Services/{Feature}Service.cs`:
 
 1. Receive DTOs from Controller
 2. Validate input (throw custom exceptions: `NameRequiredException`, `InvalidRequestException`)
 3. Map DTO → Entity using Mapster
-4. Execute repository operations via `UnitOfWork.{Repository}.{Operation}()`
+4. Execute repository Meezan via `UnitOfWork.{Repository}.{Operation}()`
 5. Handle side-effects (e.g., queue emails, trigger jobs)
 6. Call `await UnitOfWork.CommitAsync()` before returning
 7. Map Entity → DTO for response
@@ -107,13 +110,13 @@ When working in `Operations.Services/{Feature}Service.cs`:
 
 For new features, follow this sequence (see [REPOSITORY_GUIDE.md - How To Extend The System](REPOSITORY_GUIDE.md#how-to-extend-the-system)):
 
-1. **Domain:** Add Entity in `Operations.DataModel.Entities`
-2. **Schema:** Configure via `IEntityTypeConfiguration` in `Operations.Repositories`; generate EF migration
-3. **DTOs:** Create Request/Response DTOs in `Operations.Dto.DTOs`
+1. **Domain:** Add Entity in `Meezan.DataModel.Entities`
+2. **Schema:** Configure via `IEntityTypeConfiguration` in `Meezan.Repositories`; generate EF migration
+3. **DTOs:** Create Request/Response DTOs in `Meezan.Dto.DTOs`
 4. **Interfaces:** Add `I{Entity}Repository` and `I{Entity}Service`
-5. **Repository:** Implement in `Operations.Repositories.Repository`; hook to `UnitOfWork`
-6. **Service:** Implement in `Operations.Services` with validation, mapping, and `CommitAsync()` calls
-7. **Controller:** Create in `Operations.Controllers`; only call `IService` methods
+5. **Repository:** Implement in `Meezan.Repositories.Repository`; hook to `UnitOfWork`
+6. **Service:** Implement in `Meezan.Services` with validation, mapping, and `CommitAsync()` calls
+7. **Controller:** Create in `Meezan.Controllers`; only call `IService` methods
 8. **DI:** Register service in `CoreServicesResolver.cs` or create new Resolver if needed
 
 ## Key Files to Know
@@ -121,10 +124,10 @@ For new features, follow this sequence (see [REPOSITORY_GUIDE.md - How To Extend
 | File                                       | Purpose                               | When to Touch                         |
 | ------------------------------------------ | ------------------------------------- | ------------------------------------- |
 | [REPOSITORY_GUIDE.md](REPOSITORY_GUIDE.md) | Full architecture & patterns          | Understanding design decisions        |
-| `Operations/Program.cs`                    | DI root; calls Resolver classes       | Adding new Resolver registrations     |
-| `Operations.Services/*Service.cs`          | Business logic & validation           | Implementing features                 |
-| `Operations.Repositories/UnitOfWork.cs`    | Transaction scope & repository access | Understanding transaction boundaries  |
-| `Operations.Repositories/AppDbContext.cs`  | EF Core configuration & migrations    | Modifying database schema             |
+| `Meezan/Program.cs`                        | DI root; calls Resolver classes       | Adding new Resolver registrations     |
+| `Meezan.Services/*Service.cs`              | Business logic & validation           | Implementing features                 |
+| `Meezan.Repositories/UnitOfWork.cs`        | Transaction scope & repository access | Understanding transaction boundaries  |
+| `Meezan.Repositories/AppDbContext.cs`      | EF Core configuration & migrations    | Modifying database schema             |
 | `Common/PasswordHash.cs`                   | Password hashing utility              | User authentication features          |
 | `Common/Notification/Mail/*`               | Email service integration             | Sending emails or Mail entity changes |
 
@@ -141,8 +144,8 @@ For new features, follow this sequence (see [REPOSITORY_GUIDE.md - How To Extend
 ## Testing & Development
 
 - **Build:** `dotnet build` (from solution root or individual project)
-- **Run:** `dotnet run` from `Operations/` directory (API entry point)
-- **Migrations:** Use `Operations.Repositories` project for EF Core migration context
+- **Run:** `dotnet run` from `Meezan/` directory (API entry point)
+- **Migrations:** Use `Meezan.Repositories` project for EF Core migration context
 - **Hangfire Dashboard:** Accessible at `/hangfire` endpoint after app startup (if configured in appsettings)
 
 ## Glossary

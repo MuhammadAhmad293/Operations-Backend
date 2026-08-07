@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Localization\LocalizationFileReader\localizationFile.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Mapster" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Resilience" Version="10.7.0" />
+    <PackageReference Include="RabbitMQ.Client" Version="7.*" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.19.1" />
+    <PackageReference Include="Mapster.Core" Version="10.0.10" />
+    <PackageReference Include="Mapster.DependencyInjection" Version="10.0.10" />
+    <PackageReference Include="Mapster.EFCore" Version="10.0.10" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Meezan.DataModel\Meezan.DataModel.csproj" />
+    <ProjectReference Include="..\Meezan.IServices\Meezan.IServices.csproj" />
+    <ProjectReference Include="..\Meezan.Repositories\Meezan.Repositories.csproj" />
+  </ItemGroup>
+
+</Project>

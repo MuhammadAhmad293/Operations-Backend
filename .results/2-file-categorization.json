@@ -1,36 +1,30 @@
 {
   "api-controllers": [
-    "Operations/Controllers/UserController.cs",
-    "Operations/Controllers/JobTestController.cs"
+    "Meezan/Controllers/UserController.cs",
+    "Meezan/Controllers/JobTestController.cs"
   ],
-  "middleware": [
-    "Operations/ErrorHandlingMiddleware.cs"
-  ],
-  "swagger-filters": [
-    "Operations/Filter/SwaggerHeaderFilter.cs"
-  ],
-  "program-entry": [
-    "Operations/Program.cs"
-  ],
+  "middleware": ["Meezan/ErrorHandlingMiddleware.cs"],
+  "swagger-filters": ["Meezan/Filter/SwaggerHeaderFilter.cs"],
+  "program-entry": ["Meezan/Program.cs"],
   "app-settings": [
-    "Operations/appsettings.json",
-    "Operations/appsettings.Development.json",
-    "Operations/Properties/launchSettings.json",
+    "Meezan/appsettings.json",
+    "Meezan/appsettings.Development.json",
+    "Meezan/Properties/launchSettings.json",
     "EFCoreMigrationExcution/appsettings.json"
   ],
   "entities": [
-    "Operations.DataModel/Entities/User.cs",
-    "Operations.DataModel/Entities/Mail.cs",
-    "Operations.DataModel/Entities/MailAttachment.cs",
-    "Operations.DataModel/Entities/MailStatus.cs",
-    "Operations.DataModel/Entities/MailType.cs"
+    "Meezan.DataModel/Entities/User.cs",
+    "Meezan.DataModel/Entities/Mail.cs",
+    "Meezan.DataModel/Entities/MailAttachment.cs",
+    "Meezan.DataModel/Entities/MailStatus.cs",
+    "Meezan.DataModel/Entities/MailType.cs"
   ],
   "base-entities": [
-    "Operations.DataModel/Base/BaseEntity.cs",
-    "Operations.DataModel/Base/BaseMultilingualTextEntity.cs"
+    "Meezan.DataModel/Base/BaseEntity.cs",
+    "Meezan.DataModel/Base/BaseMultilingualTextEntity.cs"
   ],
   "dtos": [
-    "Operations.Dto/DTOs/UserDto.cs",
+    "Meezan.Dto/DTOs/UserDto.cs",
     "Common/Dto/ResponseDto.cs",
     "Common/Dto/EmptyResponseDto.cs",
     "Common/Dto/PaginationRequestDto.cs",
@@ -38,7 +32,7 @@
     "Common/Dto/TextValueResponseDto.cs",
     "Common/Notification/Mail/MailDto.cs",
     "Common/Notification/Mail/MailSettingDto.cs",
-    "Operations.Services/Localization/LocalizationFileReader/LocalizationFileDataDto.cs"
+    "Meezan.Services/Localization/LocalizationFileReader/LocalizationFileDataDto.cs"
   ],
   "enums": [
     "Common/Enums/ResponseStatus.cs",
@@ -47,77 +41,71 @@
     "Common/Enums/SortDirection.cs"
   ],
   "service-interfaces": [
-    "Operations.IServices/IService/IUserService.cs",
-    "Operations.IServices/IJob/IJobService.cs"
+    "Meezan.IServices/IService/IUserService.cs",
+    "Meezan.IServices/IJob/IJobService.cs"
   ],
   "services": [
-    "Operations.Services/UserService/UserService.cs",
-    "Operations.Services/Job/JobService.cs"
+    "Meezan.Services/UserService/UserService.cs",
+    "Meezan.Services/Job/JobService.cs"
   ],
-  "base-services": [
-    "Operations.Services/Base/BaseService.cs"
-  ],
+  "base-services": ["Meezan.Services/Base/BaseService.cs"],
   "repository-interfaces": [
-    "Operations.IRepositories/IRepository/IUserRepository.cs",
-    "Operations.IRepositories/IRepository/IMailRepository.cs",
-    "Operations.IRepositories/Base/IBaseRepository.cs"
+    "Meezan.IRepositories/IRepository/IUserRepository.cs",
+    "Meezan.IRepositories/IRepository/IMailRepository.cs",
+    "Meezan.IRepositories/Base/IBaseRepository.cs"
   ],
   "repositories": [
-    "Operations.Repositories/Repository/UserRepository.cs",
-    "Operations.Repositories/Repository/MailRepository.cs"
+    "Meezan.Repositories/Repository/UserRepository.cs",
+    "Meezan.Repositories/Repository/MailRepository.cs"
   ],
-  "base-repositories": [
-    "Operations.Repositories/Base/BaseRepository.cs"
-  ],
+  "base-repositories": ["Meezan.Repositories/Base/BaseRepository.cs"],
   "unit-of-work": [
-    "Operations.IRepositories/UnitOfWork/IUnitOfWork.cs",
-    "Operations.Repositories/UnitOfWork/UnitOfWork.cs"
+    "Meezan.IRepositories/UnitOfWork/IUnitOfWork.cs",
+    "Meezan.Repositories/UnitOfWork/UnitOfWork.cs"
   ],
   "db-context": [
-    "Operations.Repositories/Context/AppDbContext.cs",
-    "Operations.Repositories/Context/InitialDataSeeding.cs"
+    "Meezan.Repositories/Context/AppDbContext.cs",
+    "Meezan.Repositories/Context/InitialDataSeeding.cs"
   ],
   "entity-configurations": [
-    "Operations.Repositories/EntityConfiguration/UserConfiguration.cs",
-    "Operations.Repositories/EntityConfiguration/MailConfiguration.cs",
-    "Operations.Repositories/EntityConfiguration/MailAttachmentConfiguration.cs",
-    "Operations.Repositories/EntityConfiguration/MailStatusConfiguration.cs",
-    "Operations.Repositories/EntityConfiguration/MailTypeConfiguration.cs"
+    "Meezan.Repositories/EntityConfiguration/UserConfiguration.cs",
+    "Meezan.Repositories/EntityConfiguration/MailConfiguration.cs",
+    "Meezan.Repositories/EntityConfiguration/MailAttachmentConfiguration.cs",
+    "Meezan.Repositories/EntityConfiguration/MailStatusConfiguration.cs",
+    "Meezan.Repositories/EntityConfiguration/MailTypeConfiguration.cs"
   ],
   "ef-migrations": [
-    "Operations.Repositories/Migrations/20230217215228_initialEntities.cs",
-    "Operations.Repositories/Migrations/20230217215228_initialEntities.Designer.cs",
-    "Operations.Repositories/Migrations/20230624165515_AddMailEntity.cs",
-    "Operations.Repositories/Migrations/20230624165515_AddMailEntity.Designer.cs",
-    "Operations.Repositories/Migrations/20260317201611_FixDefaultValues.cs",
-    "Operations.Repositories/Migrations/20260317201611_FixDefaultValues.Designer.cs",
-    "Operations.Repositories/Migrations/20260601204345_UseGetDateSqlDefault.cs",
-    "Operations.Repositories/Migrations/20260601204345_UseGetDateSqlDefault.Designer.cs",
-    "Operations.Repositories/Migrations/AppDbContextModelSnapshot.cs"
+    "Meezan.Repositories/Migrations/20230217215228_initialEntities.cs",
+    "Meezan.Repositories/Migrations/20230217215228_initialEntities.Designer.cs",
+    "Meezan.Repositories/Migrations/20230624165515_AddMailEntity.cs",
+    "Meezan.Repositories/Migrations/20230624165515_AddMailEntity.Designer.cs",
+    "Meezan.Repositories/Migrations/20260317201611_FixDefaultValues.cs",
+    "Meezan.Repositories/Migrations/20260317201611_FixDefaultValues.Designer.cs",
+    "Meezan.Repositories/Migrations/20260601204345_UseGetDateSqlDefault.cs",
+    "Meezan.Repositories/Migrations/20260601204345_UseGetDateSqlDefault.Designer.cs",
+    "Meezan.Repositories/Migrations/AppDbContextModelSnapshot.cs"
   ],
-  "mappers": [
-    "Operations.Services/Mapper/UserMapper.cs"
-  ],
+  "mappers": ["Meezan.Services/Mapper/UserMapper.cs"],
   "localization": [
-    "Operations.Services/Localization/ILocalizationService.cs",
-    "Operations.Services/Localization/LocalizationService.cs",
-    "Operations.Services/Localization/LocalizationFileReader/LocalizationFileReader.cs",
-    "Operations.Services/Localization/LocalizationFileReader/LocalizationFileDataDto.cs",
-    "Operations.Services/Localization/LocalizationFileReader/localizationFile.json"
+    "Meezan.Services/Localization/ILocalizationService.cs",
+    "Meezan.Services/Localization/LocalizationService.cs",
+    "Meezan.Services/Localization/LocalizationFileReader/LocalizationFileReader.cs",
+    "Meezan.Services/Localization/LocalizationFileReader/LocalizationFileDataDto.cs",
+    "Meezan.Services/Localization/LocalizationFileReader/localizationFile.json"
   ],
   "custom-exceptions": [
-    "Operations.Services/CustomExceptions/InvalidRequestException.cs",
-    "Operations.Services/CustomExceptions/NameRequiredException.cs",
-    "Operations.Services/CustomExceptions/ObjectNotFoundException.cs"
+    "Meezan.Services/CustomExceptions/InvalidRequestException.cs",
+    "Meezan.Services/CustomExceptions/NameRequiredException.cs",
+    "Meezan.Services/CustomExceptions/ObjectNotFoundException.cs"
   ],
   "ioc-resolvers": [
-    "Operations.Services/Resolver/CoreServicesResolver.cs",
-    "Operations.Repositories/Resolver/UnitOfWorkResolver.cs",
+    "Meezan.Services/Resolver/CoreServicesResolver.cs",
+    "Meezan.Repositories/Resolver/UnitOfWorkResolver.cs",
     "Common/Resolver/CommonResolver.cs",
-    "Operations.Ioc/IocManager.cs"
+    "Meezan.Ioc/IocManager.cs"
   ],
   "settings-models": [
-    "Operations.Services/Setting/MailSettings.cs",
+    "Meezan.Services/Setting/MailSettings.cs",
     "Common/Notification/Mail/MailSetting.cs"
   ],
   "common-utilities": [
@@ -138,28 +126,22 @@
     "Common/Notification/Mail/MailSetting.cs",
     "Common/Notification/Mail/MailSettingDto.cs"
   ],
-  "lazy-loading-helpers": [
-    "Operations.Repositories/Lazier.cs"
-  ],
+  "lazy-loading-helpers": ["Meezan.Repositories/Lazier.cs"],
   "migration-runner": [
     "EFCoreMigrationExcution/Program.cs",
     "EFCoreMigrationExcution/EFCoreMigrationExcution.csproj"
   ],
   "project-files": [
-    "Operations/Operations.csproj",
-    "Operations.Services/Operations.Services.csproj",
-    "Operations.Repositories/Operations.Repositories.csproj",
-    "Operations.DataModel/Operations.DataModel.csproj",
-    "Operations.Dto/Operations.Dto.csproj",
-    "Operations.IServices/Operations.IServices.csproj",
-    "Operations.IRepositories/Operations.IRepositories.csproj",
-    "Operations.Ioc/Operations.Ioc.csproj",
+    "Meezan/Meezan.csproj",
+    "Meezan.Services/Meezan.Services.csproj",
+    "Meezan.Repositories/Meezan.Repositories.csproj",
+    "Meezan.DataModel/Meezan.DataModel.csproj",
+    "Meezan.Dto/Meezan.Dto.csproj",
+    "Meezan.IServices/Meezan.IServices.csproj",
+    "Meezan.IRepositories/Meezan.IRepositories.csproj",
+    "Meezan.Ioc/Meezan.Ioc.csproj",
     "Common/Common.csproj",
-    "Operations.sln"
+    "Meezan.sln"
   ],
-  "documentation": [
-    "README.md",
-    "REPOSITORY_GUIDE.md",
-    "AGENTS.md"
-  ]
+  "documentation": ["README.md", "REPOSITORY_GUIDE.md", "AGENTS.md"]
 }
