@@ -25,6 +25,33 @@
         public string LogoutSuccess => GetKeyValue("LogoutSuccess", "altValue");
         public string LogoutAllSuccess => GetKeyValue("LogoutAllSuccess", "altValue");
         public string MaxActiveDevicesReached => GetKeyValue("MaxActiveDevicesReached", "altValue");
+        public string AccountAlreadyExists => GetKeyValue("AccountAlreadyExists", "altValue");
+        public string AccountNotFound => GetKeyValue("AccountNotFound", "altValue");
+        public string InvalidBaseCurrency => GetKeyValue("InvalidBaseCurrency", "altValue");
+        public string AccountCreated => GetKeyValue("AccountCreated", "altValue");
+        public string WalletNotFound => GetKeyValue("WalletNotFound", "altValue");
+        public string WalletCurrencyLocked => GetKeyValue("WalletCurrencyLocked", "altValue");
+        public string WalletBalanceNotZero => GetKeyValue("WalletBalanceNotZero", "altValue");
+        public string WalletArchived => GetKeyValue("WalletArchived", "altValue");
+        public string CategoryNotFound => GetKeyValue("CategoryNotFound", "altValue");
+        public string SubcategoryParentMustBeTopLevel => GetKeyValue("SubcategoryParentMustBeTopLevel", "altValue");
+        public string CategoryDeleted => GetKeyValue("CategoryDeleted", "altValue");
+        public string ProtectedCategoryCannotBeModified => GetKeyValue("ProtectedCategoryCannotBeModified", "altValue");
+        public string WalletsMustDiffer => GetKeyValue("WalletsMustDiffer", "altValue");
+        public string TransactionSaved => GetKeyValue("TransactionSaved", "altValue");
+        public string TransactionNotFound => GetKeyValue("TransactionNotFound", "altValue");
+        public string CategoryKindMismatch => GetKeyValue("CategoryKindMismatch", "altValue");
+        public string AttachmentNotFound => GetKeyValue("AttachmentNotFound", "altValue");
+        public string InvalidAttachmentType => GetKeyValue("InvalidAttachmentType", "altValue");
+        public string AttachmentTooLarge => GetKeyValue("AttachmentTooLarge", "altValue");
+        public string ZakatPaymentDeletionWarning => GetKeyValue("ZakatPaymentDeletionWarning", "altValue");
+        public string RatesUnavailable => GetKeyValue("RatesUnavailable", "altValue");
+        public string StatisticsExcludedWalletsNote => GetKeyValue("StatisticsExcludedWalletsNote", "altValue");
+        public string NisabNotReached => GetKeyValue("NisabNotReached", "altValue");
+        public string ZakatCycleNotDue => GetKeyValue("ZakatCycleNotDue", "altValue");
+        public string ZakatPaid => GetKeyValue("ZakatPaid", "altValue");
+        public string ExternalPaymentRecorded => GetKeyValue("ExternalPaymentRecorded", "altValue");
+        public string ZakatReminderToast => GetKeyValue("ZakatReminderToast", "altValue");
 
     }
 }

@@ -33,5 +33,15 @@ namespace Meezan.Repositories.Context
         public DbSet<ProcessedMessage> ProcessedMessage { get; set; }
         public DbSet<RefreshToken> RefreshToken { get; set; }
 
+        public DbSet<Account> Account { get; set; }
+        public DbSet<Currency> Currency { get; set; }
+        public DbSet<WalletType> WalletType { get; set; }
+        public DbSet<Wallet> Wallet { get; set; }
+        public DbSet<Category> Category { get; set; }
+        public DbSet<Transaction> Transaction { get; set; }
+        public DbSet<Attachment> Attachment { get; set; }
+        public DbSet<RateSnapshot> RateSnapshot { get; set; }
+        public DbSet<ZakatCycle> ZakatCycle { get; set; }
+
     }
 }

@@ -1,4 +1,5 @@
 using Common.FileHelper;
+using Common.FileStorage;
 using Common.HttpClientHelpers;
 using Common.Notification.Mail;
 using Common.PasswordHash;
@@ -8,12 +9,15 @@ using Meezan;
 using Meezan.Filter;
 using Meezan.Repositories.Resolver;
 using Meezan.IServices.IJob;
+using Meezan.Jobs;
+using Meezan.IServices.IService;
 using Meezan.Services.Email;
 using Meezan.Services.HealthChecks;
 using Meezan.Services.Mapper;
 using Meezan.Services.Messaging;
 using Meezan.Services.Metrics;
 using Meezan.Services.Outbox;
+using Meezan.Services.RateProviders;
 using Meezan.Services.Resolver;
 using Meezan.Services.Setting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -25,6 +29,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using StackExchange.Redis;
 using System.Text;
 using System.Globalization;
 using System.Reflection;
@@ -71,6 +76,10 @@ builder.Services.AddSingleton(jwtSettings);
 RefreshTokenSettings refreshTokenSettings = new();
 builder.Configuration.Bind("RefreshTokenSettings", refreshTokenSettings);
 builder.Services.AddSingleton(refreshTokenSettings);
+
+FileStorageSettings fileStorageSettings = new();
+builder.Configuration.Bind("FileStorageSettings", fileStorageSettings);
+builder.Services.AddSingleton(fileStorageSettings);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -131,6 +140,22 @@ EmailDeliverySettings emailDeliverySettings = new();
 builder.Configuration.Bind("EmailDelivery", emailDeliverySettings);
 builder.Services.AddSingleton(emailDeliverySettings);
 
+// Rate integration (Frankfurter/GoldApi/Redis) — BR-19
+RateIntegrationSettings rateIntegrationSettings = new();
+builder.Configuration.Bind("RateIntegration", rateIntegrationSettings);
+builder.Services.AddSingleton(rateIntegrationSettings);
+builder.Services.AddHttpClient<FrankfurterRateProvider>();
+builder.Services.AddHttpClient<GoldApiRateProvider>();
+builder.Services.AddScoped<IRateProvider, CompositeRateProvider>();
+
+// Redis: rate-cache read path (BR-19: Redis → DB fallback, never blocks startup —
+// AbortOnConnectFail=false lets the multiplexer come up even if Redis isn't reachable yet
+// and keep retrying in the background, matching this repo's RabbitMQ resilience pattern)
+ConfigurationOptions redisConfigurationOptions = ConfigurationOptions.Parse(rateIntegrationSettings.Redis.ConnectionString);
+redisConfigurationOptions.AbortOnConnectFail = false;
+builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConfigurationOptions));
+builder.Services.AddStackExchangeRedisCache(options => options.Configuration = rateIntegrationSettings.Redis.ConnectionString);
+
 builder.Services.AddSingleton<RabbitConnectionManager>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<RabbitConnectionManager>());
 
@@ -146,12 +171,14 @@ builder.Services.AddHostedService<DeadLetterHandler>();
 // Health Checks
 builder.Services.AddHealthChecks()
     .AddCheck<RabbitMqHealthCheck>("rabbitmq", tags: ["ready"])
-    .AddCheck<OutboxBacklogHealthCheck>("outbox-backlog", tags: ["ready"]);
+    .AddCheck<OutboxBacklogHealthCheck>("outbox-backlog", tags: ["ready"])
+    .AddCheck<RedisHealthCheck>("redis", tags: ["ready"]);
 
 builder.Services.AddControllers();
 // add hangfire
 builder.Services.AddHangfire(x => x.UseSqlServerStorage(builder.Configuration.GetConnectionString("HFDBConString")));
 builder.Services.AddHangfireServer();
+builder.Services.AddScoped<IJobEnqueuer, HangfireJobEnqueuer>();
 //
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -159,6 +186,14 @@ builder.Services.AddEndpointsApiExplorer();//
 builder.Services.AddSwaggerGen(c =>
 {
     c.OperationFilter<SwaggerHeaderFilter>();
+    c.SchemaFilter<EnumStringSchemaFilter>();
+
+    foreach (string xmlFile in new[] { "Meezan.xml", "Meezan.Dto.xml" })
+    {
+        string xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+        if (File.Exists(xmlPath))
+            c.IncludeXmlComments(xmlPath);
+    }
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -242,6 +277,14 @@ using (IServiceScope startupScope = app.Services.CreateScope())
         "cleanup-refresh-tokens",
         js => js.CleanupExpiredRefreshTokens(),
         Cron.Daily);
+
+    // BR-19: daily rate sync, plus one immediate fire-and-forget run so a fresh install (empty
+    // RateSnapshot table) has usable rates within minutes instead of waiting for the first cron tick.
+    recurringJobManager.AddOrUpdate<IJobService>(
+        "rate-sync",
+        js => js.SyncRates(),
+        rateIntegrationSettings.CronExpression);
+    BackgroundJob.Enqueue<IJobService>(js => js.SyncRates());
 }
 
 app.Run();

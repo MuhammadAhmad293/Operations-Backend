@@ -145,5 +145,194 @@
       "en": "Maximum number of active devices reached, please log out from another device first",
       "ar": "تم الوصول إلى الحد الأقصى لعدد الأجهزة النشطة، يرجى تسجيل الخروج من جهاز آخر أولاً"
     }
+  },
+  {
+    "Key": "AccountAlreadyExists",
+    "LocalizedValue": {
+      "en": "An account already exists for this user",
+      "ar": "يوجد حساب بالفعل لهذا المستخدم"
+    }
+  },
+  {
+    "Key": "AccountNotFound",
+    "LocalizedValue": {
+      "en": "Account not found",
+      "ar": "لم يتم العثور على الحساب"
+    }
+  },
+  {
+    "Key": "InvalidBaseCurrency",
+    "LocalizedValue": {
+      "en": "Invalid base currency",
+      "ar": "عملة أساسية غير صالحة"
+    }
+  },
+  {
+    "Key": "AccountCreated",
+    "LocalizedValue": {
+      "en": "Account created successfully",
+      "ar": "تم إنشاء الحساب بنجاح"
+    }
+  },
+  {
+    "Key": "WalletNotFound",
+    "LocalizedValue": {
+      "en": "Wallet not found",
+      "ar": "لم يتم العثور على المحفظة"
+    }
+  },
+  {
+    "Key": "WalletCurrencyLocked",
+    "LocalizedValue": {
+      "en": "Wallet currency cannot be changed once transactions exist",
+      "ar": "لا يمكن تغيير عملة المحفظة بعد وجود معاملات"
+    }
+  },
+  {
+    "Key": "WalletBalanceNotZero",
+    "LocalizedValue": {
+      "en": "Wallet balance must be zero to archive it",
+      "ar": "يجب أن يكون رصيد المحفظة صفراً لأرشفتها"
+    }
+  },
+  {
+    "Key": "WalletArchived",
+    "LocalizedValue": {
+      "en": "Wallet archived successfully",
+      "ar": "تم أرشفة المحفظة بنجاح"
+    }
+  },
+  {
+    "Key": "CategoryNotFound",
+    "LocalizedValue": {
+      "en": "Category not found",
+      "ar": "لم يتم العثور على الفئة"
+    }
+  },
+  {
+    "Key": "SubcategoryParentMustBeTopLevel",
+    "LocalizedValue": {
+      "en": "A subcategory's parent must itself be a top-level category",
+      "ar": "يجب أن يكون أصل الفئة الفرعية فئة رئيسية"
+    }
+  },
+  {
+    "Key": "CategoryDeleted",
+    "LocalizedValue": {
+      "en": "Category deleted successfully",
+      "ar": "تم حذف الفئة بنجاح"
+    }
+  },
+  {
+    "Key": "ProtectedCategoryCannotBeModified",
+    "LocalizedValue": {
+      "en": "This category is protected by the system and cannot be modified or deleted",
+      "ar": "هذه الفئة محمية من قبل النظام ولا يمكن تعديلها أو حذفها"
+    }
+  },
+  {
+    "Key": "WalletsMustDiffer",
+    "LocalizedValue": {
+      "en": "The source and destination wallets must be different",
+      "ar": "يجب أن تكون المحفظة المصدر والمحفظة الوجهة مختلفتين"
+    }
+  },
+  {
+    "Key": "TransactionSaved",
+    "LocalizedValue": {
+      "en": "Transaction saved successfully",
+      "ar": "تم حفظ المعاملة بنجاح"
+    }
+  },
+  {
+    "Key": "TransactionNotFound",
+    "LocalizedValue": {
+      "en": "Transaction not found",
+      "ar": "لم يتم العثور على المعاملة"
+    }
+  },
+  {
+    "Key": "CategoryKindMismatch",
+    "LocalizedValue": {
+      "en": "The selected category does not match this transaction's type",
+      "ar": "الفئة المحددة لا تتطابق مع نوع هذه المعاملة"
+    }
+  },
+  {
+    "Key": "AttachmentNotFound",
+    "LocalizedValue": {
+      "en": "Attachment not found",
+      "ar": "لم يتم العثور على المرفق"
+    }
+  },
+  {
+    "Key": "InvalidAttachmentType",
+    "LocalizedValue": {
+      "en": "Only PDF and image files are allowed",
+      "ar": "يسمح فقط بملفات PDF والصور"
+    }
+  },
+  {
+    "Key": "AttachmentTooLarge",
+    "LocalizedValue": {
+      "en": "File size must not exceed 10 MB",
+      "ar": "يجب ألا يتجاوز حجم الملف 10 ميجابايت"
+    }
+  },
+  {
+    "Key": "ZakatPaymentDeletionWarning",
+    "LocalizedValue": {
+      "en": "You are deleting a Zakat payment expense — are you sure?",
+      "ar": "أنت على وشك حذف معاملة دفع زكاة — هل أنت متأكد؟"
+    }
+  },
+  {
+    "Key": "RatesUnavailable",
+    "LocalizedValue": {
+      "en": "Exchange rates are not available yet. Please try again shortly.",
+      "ar": "أسعار الصرف غير متوفرة حاليًا. يرجى المحاولة مرة أخرى بعد قليل."
+    }
+  },
+  {
+    "Key": "StatisticsExcludedWalletsNote",
+    "LocalizedValue": {
+      "en": "One or more wallets are excluded from totals and are not reflected in this balance.",
+      "ar": "تم استبعاد محفظة واحدة أو أكثر من الإجماليات ولا تنعكس في هذا الرصيد."
+    }
+  },
+  {
+    "Key": "NisabNotReached",
+    "LocalizedValue": {
+      "en": "The total has not reached the nisab",
+      "ar": "لم يبلغ الإجمالي النصاب"
+    }
+  },
+  {
+    "Key": "ZakatCycleNotDue",
+    "LocalizedValue": {
+      "en": "This Zakat cycle is not currently due for payment",
+      "ar": "دورة الزكاة هذه غير مستحقة للدفع حاليًا"
+    }
+  },
+  {
+    "Key": "ZakatPaid",
+    "LocalizedValue": {
+      "en": "Zakat payment recorded successfully",
+      "ar": "تم تسجيل دفع الزكاة بنجاح"
+    }
+  },
+  {
+    "Key": "ExternalPaymentRecorded",
+    "LocalizedValue": {
+      "en": "External Zakat payment recorded successfully",
+      "ar": "تم تسجيل دفع الزكاة الخارجي بنجاح"
+    }
+  },
+  {
+    "Key": "ZakatReminderToast",
+    "LocalizedValue": {
+      "en": "Your Zakat payment will be due soon",
+      "ar": "سيحل موعد دفع زكاتك قريبًا"
+    }
   }
 ]

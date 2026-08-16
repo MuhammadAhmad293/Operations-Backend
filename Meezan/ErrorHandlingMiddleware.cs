@@ -31,6 +31,8 @@ namespace Meezan
 
             if (ex is ObjectNotFoundException) code = HttpStatusCode.NotFound;
             else if (ex is NameRequiredException || ex is ArgumentNullException || ex is InvalidRequestException) code = HttpStatusCode.BadRequest;
+            else if (ex is UnprocessableEntityException) code = HttpStatusCode.UnprocessableEntity;
+            else if (ex is RatesUnavailableException) code = HttpStatusCode.ServiceUnavailable;
 
             var result = JsonConvert.SerializeObject(ex.Message);
             context.Response.ContentType = "application/json";

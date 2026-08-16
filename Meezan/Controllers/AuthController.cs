@@ -29,12 +29,16 @@ namespace Meezan.Controllers
         [HttpPost("register")]
         [EnableRateLimiting("auth")]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(ResponseDto<EmptyResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Register(RegisterDto dto)
             => Ok(await AuthService.Register(dto, HttpContext.RequestAborted));
 
         [HttpPost("login")]
         [EnableRateLimiting("auth-login")]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(ResponseDto<LoginResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Login(LoginDto dto)
         {
             string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -44,6 +48,8 @@ namespace Meezan.Controllers
         [HttpPost("web/login")]
         [EnableRateLimiting("auth-login")]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(ResponseDto<LoginResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> WebLogin(LoginDto dto)
         {
             string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -53,24 +59,35 @@ namespace Meezan.Controllers
         }
 
         [HttpPost("change-password")]
+        [ProducesResponseType(typeof(ResponseDto<EmptyResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ChangePassword(ChangePasswordDto dto)
             => Ok(await AuthService.ChangePassword(User.FindFirstValue(ClaimTypes.NameIdentifier), dto, HttpContext.RequestAborted));
 
         [HttpPost("forgot-password")]
         [EnableRateLimiting("auth")]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(ResponseDto<EmptyResponseDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordDto dto)
             => Ok(await AuthService.ForgotPassword(dto, HttpContext.RequestAborted));
 
         [HttpPost("reset-password")]
         [EnableRateLimiting("auth")]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(ResponseDto<EmptyResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
             => Ok(await AuthService.ResetPassword(dto, HttpContext.RequestAborted));
 
         [HttpPost("refresh-token")]
         [EnableRateLimiting("auth-refresh")]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(ResponseDto<LoginResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> RefreshToken(RefreshTokenRequestDto? dto)
         {
             string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -80,6 +97,9 @@ namespace Meezan.Controllers
         [HttpPost("web/refresh-token")]
         [EnableRateLimiting("auth-refresh")]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(ResponseDto<LoginResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> WebRefreshToken()
         {
             string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -93,12 +113,16 @@ namespace Meezan.Controllers
         [HttpPost("logout")]
         [EnableRateLimiting("auth")]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(ResponseDto<EmptyResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Logout(LogoutDto? dto)
             => Ok(await AuthService.Logout(dto?.RefreshToken, HttpContext.RequestAborted));
 
         [HttpPost("web/logout")]
         [EnableRateLimiting("auth")]
         [AllowAnonymous]
+        [ProducesResponseType(typeof(ResponseDto<EmptyResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> WebLogout()
         {
             string presentedToken = Request.Cookies[RefreshTokenCookieName];
@@ -109,14 +133,24 @@ namespace Meezan.Controllers
 
         [HttpPost("logout-all")]
         [EnableRateLimiting("auth")]
+        [ProducesResponseType(typeof(ResponseDto<EmptyResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> LogoutAllDevices()
             => Ok(await AuthService.LogoutAllDevices(User.FindFirstValue(ClaimTypes.NameIdentifier), HttpContext.RequestAborted));
 
         [HttpGet("sessions")]
+        [ProducesResponseType(typeof(ResponseDto<List<SessionDto>>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetActiveSessions()
             => Ok(await AuthService.GetActiveSessions(User.FindFirstValue(ClaimTypes.NameIdentifier), HttpContext.RequestAborted));
 
         [HttpPost("sessions/{id}/revoke")]
+        [ProducesResponseType(typeof(ResponseDto<EmptyResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> RevokeSession(int id)
             => Ok(await AuthService.RevokeSession(User.FindFirstValue(ClaimTypes.NameIdentifier), id, HttpContext.RequestAborted));
 

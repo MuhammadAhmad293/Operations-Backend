@@ -7,5 +7,6 @@
         void DelayedJob();
         void ContinuationJob();
         void CleanupExpiredRefreshTokens();
+        void SyncRates();
     }
 }

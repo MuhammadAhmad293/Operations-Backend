@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sk -X POST https://localhost:7255/api/transactions -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"type\":\"Income\",\"dateGregorian\":\"__TRACKED_VAR__\",\"time\":\"09:06:00\",\"amount\":10000,\"walletId\":35,\"categoryId\":102}' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
+      "Bash(curl -sk -X POST https://localhost:7255/api/zakat/pay -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"cycleId\":20,\"walletId\":32,\"amount\":15000}')",
+      "Bash(curl -sk -X POST https://localhost:7255/api/zakat/pay -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"cycleId\":20,\"walletId\":35,\"amount\":10000}')",
+      "Bash(curl -sk -X POST https://localhost:7255/api/zakat/cycles/20/external-payment -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"amount\":18750}')",
+      "Bash(sqlcmd -S localhost -U MOHALI -P '50%admin' -C -d Operation -l 30 -Q \"SET NOCOUNT ON; SELECT Id, Amount, WalletId, ZakatCycleId, ZakatGoldGrams FROM [Transaction] WHERE ZakatCycleId=20 ORDER BY Id;\" -s\",\" -W)",
+      "Bash(curl -sk -X DELETE https://localhost:7255/api/transactions/65 -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -w '\\\\nHTTP_STATUS:%{http_code}\\\\n')",
+      "Bash(curl -sk https://localhost:7255/api/account -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(curl -sk -X PUT https://localhost:7255/api/account/settings -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"baseCurrencyCode\":\"USD\",\"displayCalendar\":\"Hijri\",\"theme\":\"Dark\",\"language\":\"En\"}')",
+      "Bash(curl -sk https://localhost:7255/api/zakat/status -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(curl -sk -X PUT https://localhost:7255/api/account/settings -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"baseCurrencyCode\":\"SAR\",\"displayCalendar\":\"Hijri\",\"theme\":\"Dark\",\"language\":\"En\"}')",
+      "Bash(curl -sk 'https://localhost:7255/api/rates/latest?base=GOLD&quotes=SAR' -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(curl -sk https://localhost:7255/api/categories?kind=expense -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(curl -sk -X POST https://localhost:7255/api/transactions -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"type\":\"Expense\",\"dateGregorian\":\"__TRACKED_VAR__\",\"time\":\"10:00:00\",\"amount\":95,\"walletId\":33,\"categoryId\":104,\"karat\":24}')",
+      "Bash(curl -sk -X POST https://localhost:7255/api/transactions -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"type\":\"Expense\",\"dateGregorian\":\"__TRACKED_VAR__\",\"time\":\"10:01:00\",\"amount\":4900,\"walletId\":34,\"categoryId\":104}')",
+      "Bash(curl -sk -X POST https://localhost:7255/api/transactions -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"type\":\"Expense\",\"dateGregorian\":\"__TRACKED_VAR__\",\"time\":\"10:02:00\",\"amount\":480000,\"walletId\":32,\"categoryId\":104}')",
+      "Bash(curl -sk -X POST https://localhost:7255/api/transactions -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"type\":\"Income\",\"dateGregorian\":\"__TRACKED_VAR__\",\"time\":\"10:03:00\",\"amount\":100,\"walletId\":33,\"categoryId\":102,\"karat\":24}')",
+      "Bash(sqlcmd -S localhost -U MOHALI -P '50%admin' -C -d Operation -l 30 -Q \"SET NOCOUNT ON; UPDATE ZakatCycle SET HawlDueHijri='1448-02-26' WHERE Id=22; SELECT Id,HawlDueHijri,Status FROM ZakatCycle WHERE Id=22;\" -s\",\" -W)",
+      "Bash(curl -sk -X POST https://localhost:7255/api/transactions -H 'Content-Type: application/json' -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -d '{\"type\":\"Income\",\"dateGregorian\":\"__TRACKED_VAR__\",\"time\":\"10:04:00\",\"amount\":1,\"walletId\":32,\"categoryId\":102}')",
+      "Bash(powershell -Command \"Stop-Process -Id 3144 -Force\")",
+      "Bash(sqlcmd -S localhost -U MOHALI -P 50%admin -C -d Operation -l 30 -Q ' *)",
+      "Bash(nohup dotnet run --project Meezan/Meezan.csproj --urls \"https://localhost:7255\" --no-build)",
+      "Bash(echo \"started with PID $!\")",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 7255 -State Listen | Select-Object -First 1 OwningProcess\")",
+      "Bash(powershell -Command \"Stop-Process -Id 30340 -Force\")",
+      "Bash(git mv *)"
+    ]
+  }
+}

@@ -31,12 +31,13 @@ The UI supports **English and Arabic** (full RTL) and **dark/light themes**.
 - **User** — authenticated via the EXISTING user table in the backend (login/logout already
   implemented). Do not create a new user table.
 - **Account** — exactly ONE per user. Created with a name and a base currency (mandatory,
-  from a predefined list) and an optional initial amount (default 0). The base currency
-  defines how the total balance is displayed and can be changed later in Settings —
-  including to gold, in which case the total is shown in grams.
+  from the current `Currencies` lookup table, see BR-02) and an optional initial amount
+  (default 0). The base currency defines how the total balance is displayed and can be
+  changed later in Settings — including to gold, in which case the total is shown in grams.
 - **Wallet** — one place money lives. Fields: name, type (lookup: General, Bank Account,
-  Cash, …), color, icon, exactly one currency (USD, SAR, EGP, GOLD, SILVER), initial
-  amount, exclude-from-total flag. Metal balances are stored in grams (3 decimals).
+  Cash, …), color, icon, exactly one currency (from the `Currencies` lookup table — seeded
+  with USD, SAR, EGP, GOLD, SILVER and grown at runtime, see BR-02), initial amount,
+  exclude-from-total flag. Metal balances are stored in grams (3 decimals).
 - **Transaction** — Income | Expense | Transfer. Dual date (Hijri + Gregorian) + time,
   amount, wallet (transfer: from + to), category/subcategory (income & expense only),
   optional description, note, attachments, optional linked fee.
@@ -48,9 +49,15 @@ The UI supports **English and Arabic** (full RTL) and **dark/light themes**.
 ## 3. Business Rules
 
 - **BR-01 Account.** One account per user. Name and base currency mandatory (base currency
-  from the predefined currency list); initial amount optional, default 0.
-- **BR-02 Wallet currency.** Each wallet has exactly one currency. Metal (gold/silver)
-  balances are entered and stored in grams with 3-decimal precision (x.xxx).
+  from the current `Currencies` lookup table — see BR-02); initial amount optional,
+  default 0.
+- **BR-02 Wallet currency.** Each wallet has exactly one currency, chosen from the
+  `Currencies` lookup table — **not a fixed enum**. The table is seeded at design-time with
+  five bootstrap currencies (USD, SAR, EGP, GOLD, SILVER) and **grows at runtime**: the
+  daily rate-sync job (BR-19) also fetches Frankfurter's currency list and upserts any fiat
+  code not yet present, so the selectable list expands without a code change as Frankfurter
+  adds coverage. Metal (gold/silver) balances are entered and stored in grams with
+  3-decimal precision (x.xxx).
 - **BR-03 Gold karat.** Every gold amount entry carries a karat: 24 (default), 22, 21, 18,
   or 14, selected from a dropdown. Pure-gold (24K) equivalent = weight × (karat ÷ 24).
   General conversion between karats: newWeight = (originalWeight × originalPurity) ÷ newPurity
@@ -65,7 +72,10 @@ The UI supports **English and Arabic** (full RTL) and **dark/light themes**.
   soft delete (isDeleted = true). Historical transactions keep displaying it. When editing
   such a transaction, the deleted item appears as the currently selected value but is NOT
   present in the dropdown; once the user changes the selection, the deleted item can never
-  be selected again. Unreferenced categories/wallets may be hard-deleted.
+  be selected again. Unreferenced categories/wallets may be hard-deleted. **Exception**: the
+  account's system-created, protected "Zakat/Charity" category (`isProtected = true`, see
+  §4.5) can never be edited or deleted by the user at all, regardless of whether it's
+  referenced.
 - **BR-07 Mandatory fields.** Every transaction: date + time, amount > 0, wallet.
   Income/Expense additionally: category or subcategory. Transfer additionally: from-wallet
   and to-wallet (must differ). Optional: description, note, attachments, fee.
@@ -91,17 +101,26 @@ The UI supports **English and Arabic** (full RTL) and **dark/light themes**.
   its pure-gold-gram equivalent (pot value ÷ price of 1 g of 24K gold).
 - **BR-14 Nisab.** Nisab = 85 g of pure gold. When the pot reaches ≥ 85 g, a hawl starts
   on that Hijri day.
-- **BR-15 Hawl.** If the pot stays ≥ nisab for one full Hijri year, zakat is due:
-  2.5% of the pot valued on the due day. The pot is re-evaluated after every
-  balance-affecting transaction and on each daily rate refresh. If it drops below nisab
-  before the year completes → cycle status = Broken, the Zakat screen shows
-  "The total has not reached the nisab", and a NEW cycle starts whenever nisab is reached
-  again.
+- **BR-15 Hawl.** Cycles are **time-driven, not payment-driven**. The pot is re-evaluated
+  after every balance-affecting transaction and on each daily rate refresh. If the pot stays
+  ≥ nisab for a full Hijri year, at `hawlDueHijri` the cycle becomes **Due** — its pot
+  valuation and the 2.5% amount owed are frozen at that moment — and a **new Active cycle
+  starts the same Hijri day, unconditionally**, regardless of whether the just-Due cycle has
+  been paid. An account therefore has at most one **Active** cycle at a time, but can
+  accumulate multiple simultaneous **Due** cycles (unpaid debts from consecutive years). If
+  the pot drops below nisab at any re-evaluation before the *Active* cycle's year completes
+  → that cycle's status = Broken (already-Due cycles are unaffected by this), the Zakat
+  screen shows "The total has not reached the nisab", and a new cycle starts whenever nisab
+  is reached again (the Broken cycle is never reused).
 - **BR-16 Reminder.** If zakat will be due, a toast notification is shown at portal login,
   starting two weeks before hawl completion.
-- **BR-17 Pay Zakat.** The action creates an expense transaction for the due amount from a
-  wallet the user chooses, marks the cycle Paid, and — if the post-payment pot is still
-  ≥ the 85 g equivalent — starts a new hawl immediately.
+- **BR-17 Pay Zakat.** Payment is **partial and multi-source**, tracked per Due cycle (see
+  §4.5 for the full model): zero or more linked expense `Transaction`s, created from a
+  wallet the user chooses and always posted to the account's protected "Zakat/Charity"
+  category, plus an optional external-payment record ("I paid outside Meezan" — no wallet
+  touched, no transaction created). A cycle becomes **Paid** once its linked-expense total
+  plus its external-payment total reaches the amount due. Because cycles are time-driven
+  (BR-15), paying a cycle never gates or triggers the next one.
 - **BR-18 Recurring.** Out of scope for this phase (future work). Do not implement.
 - **BR-19 Exchange rates.** Provider: **Frankfurter API v2** (`api.frankfurter.dev/v2`,
   free, no API key) as the single source for FX (USD/SAR/EGP) AND metals (XAU gold, XAG
@@ -150,32 +169,80 @@ Purchase price never matters — only the market price on the day zakat becomes 
 
 ### 4.3 Hawl state machine
 
+Cycles are **time-driven, not payment-driven** (BR-15) — the only thing that moves a cycle
+from Active to Due is the calendar reaching `hawlDueHijri` with the pot still ≥ nisab;
+whether an *older* Due cycle has been paid is irrelevant to this transition:
+
 ```
             pot ≥ 85g (pure-gold equivalent)
   (no cycle) ────────────────────────────────► ACTIVE (hawlStartHijri = today-Hijri)
       ▲                                           │
-      │  pot < nisab at any re-evaluation         │ one full Hijri year with pot ≥ nisab
-      │  → show "The total has not reached        ▼
-      └── the nisab"            BROKEN ◄──── … ── DUE (zakatAmountDue = 2.5% × pot value
-                                                       valued on the due day)
-                                                   │ "Pay Zakat" → expense transaction
-                                                   ▼
-                                                 PAID ──► if post-payment pot ≥ nisab:
-                                                          new ACTIVE cycle starts immediately
+      │  pot < nisab at any re-evaluation         │ hawlDueHijri reached, pot still ≥ nisab
+      │  (this Active cycle only —                ▼
+      │   already-Due cycles are unaffected)  DUE (ZakatDueGoldGrams = 2.5% × pot,
+      └── → show "The total has not               frozen at this due-day valuation)
+          reached the nisab"     BROKEN            │
+                                                     │ unconditionally, same Hijri day —
+                                                     │ never gated on whether DUE gets paid
+                                                     ▼
+                                            new ACTIVE cycle starts
+                                            (the DUE cycle above stays exactly as it is:
+                                             an accumulated debt, paid down independently)
+
+  DUE ──(any mix of linked expenses + external payments, tracked in pure-gold
+          grams — §4.5)──────────────────────────────────────────────► PAID
+          once paid ≥ due
 ```
 
+An account can therefore hold **at most one Active cycle** but **multiple simultaneous Due
+cycles** (e.g. two consecutive unpaid years) at the same time, each paid down independently.
+A single re-evaluation can even cascade through more than one due boundary in one pass if
+several Hijri years elapsed since the last check (e.g. after a long gap with no
+balance-affecting activity), producing several new Due cycles at once.
+
 Re-evaluation triggers: every balance-affecting transaction (create/edit/delete) and every
-daily rate refresh. Reminder toast at login from `hawlDueHijri − 14 days` while status
-will be DUE (BR-16).
+daily rate refresh. Reminder toast at login from `hawlDueHijri − 14 days` while the Active
+cycle is trending toward Due (BR-16).
 
 ### 4.4 Display rules
 
-- The Zakat screen shows: pot in pure-gold grams, nisab status, hawl progress (Hijri
-  dates), amount due when applicable, zakat history (past cycles), and the
-  "Pay Zakat" action.
+- The Zakat screen shows: pot in pure-gold grams (+ current base-currency value), nisab
+  status, the Active cycle's hawl progress (Hijri dates) with a projected amount due, every
+  outstanding Due cycle with its remaining amount, zakat history (past cycles, any status),
+  and the "Pay Zakat" / "record external payment" actions.
 - Wallet screens show RAW holdings: a gold wallet displays the grams the user purchased
   (karat breakdown available), not the pure equivalent.
 - The account header total converts to the base currency (grams when base = GOLD).
+
+### 4.5 Payment model (partial, multi-source, gold-gram-denominated)
+
+Zakat debt is a **weight of gold, not a currency figure** — this is intentionally stricter
+than BR-17's original single-payment wording:
+
+- `ZakatDueGoldGrams` (2.5% × the pot at the due-day valuation, frozen when the cycle became
+  Due) is the single source of truth for what a Due cycle owes — always pure-24K grams,
+  never a currency amount. Every currency figure shown anywhere in the Zakat UI is a
+  **read-time-only** conversion of that weight at the *current* gold price; switching the
+  account's base currency in Settings changes only the displayed conversion — nothing
+  stored changes, and no cycle's status is affected.
+- A Due cycle is paid down by any combination of:
+  - **Linked expense transactions** — an expense created from a wallet the user chooses,
+    tagged with the cycle it pays toward (`Transaction.zakatCycleId`). The wallet-currency
+    amount paid is converted to pure-gold grams **once**, at that day's price, and stored
+    on the transaction (`zakatGoldGrams`); it is never revalued later even if the gold
+    price moves.
+  - **External payments** — "I paid outside Meezan": an amount entered in the account's
+    current base currency, converted to grams at entry time, and accumulated onto the
+    cycle's `externalPaidGoldGrams`. No wallet is touched and no transaction is created.
+- A cycle's status becomes **Paid** once `Σ zakatGoldGrams` of its linked transactions plus
+  `externalPaidGoldGrams` reaches `ZakatDueGoldGrams`. Because multiple Due cycles can
+  coexist (BR-15), every payment — linked or external — targets one explicit cycle.
+- Deleting a linked expense transaction reverts its cycle's payment total accordingly
+  (status can fall back from Paid to Due); it never touches any other cycle.
+- Every Zakat payment posts against a single, system-created, per-account **protected**
+  category — "Zakat/Charity" (created automatically when the account itself is created).
+  The user can never edit, rename, or delete this category, regardless of whether BR-06's
+  normal soft-delete-if-referenced rule would otherwise permit it.
 
 ## 5. Data Model
 
@@ -197,7 +264,7 @@ erDiagram
   TRANSACTIONS |o--o{ TRANSACTIONS : "fee of (cascade delete)"
   TRANSACTIONS ||--o{ ATTACHMENTS : has
   ACCOUNTS ||--o{ ZAKAT_CYCLES : tracks
-  ZAKAT_CYCLES |o--|| TRANSACTIONS : "paid by"
+  ZAKAT_CYCLES |o--o{ TRANSACTIONS : "paid by (zero or more linked expenses; partial/multi-source, BR-17)"
 
   USERS {
     uuid id PK "EXISTING table (login/logout already implemented)"
@@ -212,7 +279,7 @@ erDiagram
     string language "enum: en | ar"
   }
   CURRENCIES {
-    string code PK "USD, SAR, EGP, GOLD, SILVER (seeded lookup)"
+    string code PK "seeded USD, SAR, EGP, GOLD, SILVER; fiat codes grow at runtime via the rate-sync job (BR-02)"
     string type "enum: Fiat | Metal"
     string nameEn
     string nameAr
@@ -246,6 +313,7 @@ erDiagram
     string color "null on subcategories (inherit parent)"
     string icon "null on subcategories (inherit parent)"
     int sortOrder
+    bool isProtected "true only for the system-created Zakat/Charity category; blocks edit/delete"
     bool isDeleted "soft delete"
   }
   TRANSACTIONS {
@@ -265,6 +333,8 @@ erDiagram
     decimal convertedAmount "cross-currency transfer"
     bool isFee
     uuid parentTransactionId FK "fee link; ON DELETE CASCADE"
+    uuid zakatCycleId FK "nullable; set on Zakat-payment expenses (BR-17)"
+    decimal zakatGoldGrams "nullable; wallet amount converted to pure-gold grams once, at creation — never revalued (BR-17, §4.5)"
     string description "optional"
     string note "optional"
   }
@@ -278,7 +348,7 @@ erDiagram
   }
   RATE_SNAPSHOTS {
     uuid id PK
-    string fromCurrency FK "e.g. USD, XAU, XAG"
+    string fromCurrency FK "USD or GOLD/SILVER — provider codes XAU/XAG are translated before storage, never persisted"
     string toCurrency FK
     decimal rate "normalized: metals stored per GRAM (ounce / 31.1034768)"
     datetime fetchedAt
@@ -291,8 +361,8 @@ erDiagram
     string hawlDueHijri "start + 1 Hijri year"
     string status "enum: Active | Due | Broken | Paid"
     decimal potGoldGramsAtDue
-    decimal zakatAmountDue "in base currency at due-day valuation"
-    uuid payTransactionId FK "the Pay Zakat expense"
+    decimal zakatDueGoldGrams "2.5% x potGoldGramsAtDue; pure-24K grams, never a currency amount (§4.5)"
+    decimal externalPaidGoldGrams "nullable; accumulated 'paid outside Meezan' amount, in grams (§4.5)"
   }
 ```
 
@@ -310,6 +380,13 @@ erDiagram
    the ERD; the self-reference implements the fee link with cascade delete (BR-09).
 5. **RATE_SNAPSHOTS is append-only** (inserts only) and stores metal prices normalized to
    per-gram.
+6. **ZakatCycle payment linkage is the reverse `Transaction.zakatCycleId` FK**, not a
+   one-to-one `payTransactionId` — many expense transactions (across many wallets, over
+   time) can pay toward one cycle, supporting BR-17's partial/multi-source payment model.
+7. **One protected `Category` row per account** ("Zakat/Charity", `isProtected = true`),
+   created alongside the account itself — not a shared/seeded lookup row, since `Category`
+   is already account-scoped. `isProtected` categories are exempt from user edit/delete
+   regardless of BR-06's normal soft-delete-if-referenced rule.
 
 ## 6. API Contract (high level)
 
@@ -324,7 +401,7 @@ RFC 7807 problem+json for errors, UTC timestamps.
 | 1   | `/api/account`                            | GET                | The user's account + settings + total balance in base currency                                                                                                                      |
 | 2   | `/api/account`                            | POST               | First-run setup: name, baseCurrencyCode, initialAmount? (BR-01)                                                                                                                     |
 | 3   | `/api/account/settings`                   | PUT                | baseCurrencyCode, displayCalendar, theme, language                                                                                                                                  |
-| 4   | `/api/lookups/currencies`                 | GET                | Seeded currency list (code, type, EN/AR names, decimals)                                                                                                                            |
+| 4   | `/api/lookups/currencies`                 | GET                | Current currency list (code, type, EN/AR names, decimals) — grows at runtime, not a fixed set (BR-02)                                                                              |
 | 5   | `/api/lookups/wallet-types`               | GET                | Seeded wallet types (EN/AR names)                                                                                                                                                   |
 | 6   | `/api/wallets`                            | GET                | All wallets (raw balances; gold: grams + karat breakdown)                                                                                                                           |
 | 7   | `/api/wallets`                            | POST               | name, walletTypeId, currencyCode, initialAmount?, color, icon, excludeFromTotal                                                                                                     |
@@ -337,7 +414,7 @@ RFC 7807 problem+json for errors, UTC timestamps.
 | 14  | `/api/transactions`                       | GET                | Filtered list: period or from/to, wallet, category, type; grouped-by-day payload                                                                                                    |
 | 15  | `/api/transactions/search?q=`             | GET                | Free-text search                                                                                                                                                                    |
 | 16  | `/api/transactions`                       | POST               | type, dates, time, amount, walletId, toWalletId?, categoryId?, karat?, exchangeRate?, convertedAmount?, description?, note?, fee? {amount} → creates linked fee transaction (BR-09) |
-| 17  | `/api/transactions/{id}`                  | GET / PUT / DELETE | Read / edit (BR-06 dropdown rule) / delete (fee cascades)                                                                                                                           |
+| 17  | `/api/transactions/{id}`                  | GET / PUT / DELETE | Read (exposes nullable `zakatCycleId` so the frontend can show a Zakat-specific delete confirmation) / edit (BR-06 dropdown rule) / delete (fee cascades; reverts the linked cycle's payment total if `zakatCycleId` is set)  |
 | 18  | `/api/transactions/{id}/attachments`      | POST               | multipart; ≤ 10 MB; pdf + images only                                                                                                                                               |
 | 19  | `/api/attachments/{id}`                   | GET / DELETE       | Download / remove                                                                                                                                                                   |
 | 20  | `/api/overview?period=&from=&to=`         | GET                | income, expense, total for the filter (BR-11)                                                                                                                                       |
@@ -345,10 +422,11 @@ RFC 7807 problem+json for errors, UTC timestamps.
 | 22  | `/api/statistics?period=`                 | GET                | openingBalance, endingBalance, excludedNote, overview                                                                                                                               |
 | 23  | `/api/statistics/structure?kind=&period=` | GET                | Donut data: per category {percent, amount, txCount}                                                                                                                                 |
 | 24  | `/api/rates/latest?base=&quotes=`         | GET                | Latest snapshot rates (never live-calls the provider)                                                                                                                               |
-| 25  | `/api/zakat/status`                       | GET                | Pot (pure-gold grams + base-currency value), nisab status, active cycle, hawl progress, amount due                                                                                  |
-| 26  | `/api/zakat/cycles`                       | GET                | Cycle history                                                                                                                                                                       |
-| 27  | `/api/zakat/pay`                          | POST               | walletId → creates the zakat expense, marks cycle Paid, may start a new hawl (BR-17)                                                                                                |
+| 25  | `/api/zakat/status`                       | GET                | Pot (pure-gold grams + base-currency value), nisab status, Active cycle's hawl progress + projected amount due, total outstanding across every Due cycle                            |
+| 26  | `/api/zakat/cycles`                       | GET                | Cycle history — every cycle, any status, each with due/paid/remaining in grams + base-currency value                                                                                |
+| 27  | `/api/zakat/pay`                          | POST               | cycleId (multiple Due cycles can coexist, BR-15), walletId, amount? (base currency; defaults to the full remaining balance) → creates a linked expense on the protected Zakat/Charity category, cycle becomes Paid once fully covered (BR-17) |
 | 28  | `/api/notifications/login`                | GET                | Pending login toasts (zakat reminder, BR-16)                                                                                                                                        |
+| 29  | `/api/zakat/cycles/{id}/external-payment` | POST               | amount (base currency) → records a payment made outside Meezan, converted to grams and accumulated onto the cycle; no wallet touched, no transaction created (BR-17)                |
 
 ## 7. Rate Integration Architecture
 
@@ -356,15 +434,20 @@ Patterns: **Adapter (anti-corruption layer)** + **Strategy/fallback composite** 
 **resilient HTTP gateway** + **cache-aside with a scheduled worker**.
 
 ```
-RateSyncJob (scheduled; daily, config-driven)
+RateSyncJob (scheduled; daily, config-driven; also fires once at startup so a fresh
+             install has usable rates within minutes instead of waiting for the cron tick)
    └─> CompositeRateProvider : IRateProvider          [Strategy / fallback chain]
          ├─> FrankfurterRateProvider                   [Adapter + typed HttpClient + Polly]
-         │     GET /v2/rates?base=USD&quotes=SAR,EGP
-         │     GET /v2/rates?base=XAU&quotes=USD,SAR,EGP   (gold, per troy ounce)
-         │     GET /v2/rates?base=XAG&quotes=USD,SAR,EGP   (silver, per troy ounce)
-         │     normalize: metal per-gram = per-ounce ÷ 31.1034768
-         └─> GoldApiRateProvider (metals fallback)     [Adapter + typed HttpClient + Polly]
-   └─> INSERT RateSnapshots (append-only) ──> refresh Redis (latest per pair)
+         │     GET /v2/rates?base=USD&quotes=<every other seeded fiat code>  (USD-pivot —
+         │       one call regardless of how many fiat currencies are seeded)
+         │     GET /v2/rates?base=XAU&quotes=USD   (gold, per troy ounce)
+         │     GET /v2/rates?base=XAG&quotes=USD   (silver, per troy ounce)
+         │     normalize: metal per-gram = per-ounce ÷ 31.1034768; XAU→GOLD / XAG→SILVER
+         │       code translation happens here — nothing downstream ever sees XAU/XAG
+         │     GET /v2/currencies → upsert any new fiat Currency rows (BR-02)
+         └─> GoldApiRateProvider (metals-only fallback) [Adapter + typed HttpClient + Polly]
+   └─> INSERT RateSnapshots (append-only — every sync run inserts new rows, never
+         updates an existing one) ──> refresh Redis (latest per pair)
 
 Application reads: Redis → on miss, latest DB snapshot → populate Redis.
 User actions NEVER call the external provider. (BR-19)
@@ -374,6 +457,15 @@ User actions NEVER call the external provider. (BR-19)
   ratePerGram?, fetchedAt, source} — the rest of the system never sees provider schemas.
 - Polly policies on the typed HttpClient: timeout, retry with exponential backoff,
   circuit breaker (job fails fast when the provider is down; last snapshot keeps serving).
+- **Rate resolution algorithm** (`GetLatestAsync(from, to)`, the only read path — it never
+  calls a provider). Only `USD→X` (fiat) and `{GOLD,SILVER}→USD` pairs are ever fetched and
+  stored directly; every other pair used anywhere in the system (account totals, the Zakat
+  pot, cross-currency transfers) is derived at read time:
+  1. a direct stored snapshot for the exact requested pair;
+  2. else its inverse (`rate = 1 / storedRate` for the reverse-direction snapshot);
+  3. else cross through USD (`rateA→B = rateA→USD × rateUSD→B`, each leg resolved via steps
+     1–2 first) — e.g. `EGP→SAR = (1/USD→EGP) × USD→SAR`, `SAR→GOLD = (1/USD→SAR) ×
+     (1/GOLD→USD)`.
 - Self-hosting escape hatch: Frankfurter is open source and Docker-deployable; switching
   to a self-hosted instance is a base-URL config change only.
 
@@ -399,12 +491,15 @@ The actor is the authenticated user unless stated; "System" marks background use
 **UC-01 Create account (first run)**
 
 - Preconditions: user authenticated (existing auth); no account exists yet.
-- Main flow: 1. User enters account name. 2. Selects base currency from the predefined
-  list. 3. Optionally enters an initial amount (default 0). 4. System creates the account
-  and a default Cash wallet holding the initial amount.
+- Main flow: 1. User enters account name. 2. Selects base currency from the current
+  `Currencies` list (BR-02). 3. Optionally enters an initial amount (default 0). 4. System
+  creates the account, a default Cash wallet (in a fiat currency — the chosen base currency
+  if it's fiat, else a fallback fiat currency) holding the initial amount, a set of default
+  categories, and the account's one protected "Zakat/Charity" expense category (§4.5).
 - Alternate: A1 initial amount skipped → 0.
 - Acceptance: Given no account, When name+currency submitted, Then account exists with
-  chosen base currency And a Cash wallet with the initial amount And the main screen opens.
+  chosen base currency And a Cash wallet with the initial amount And a protected
+  Zakat/Charity category exists that cannot be edited or deleted And the main screen opens.
 
 **UC-02 Change base currency**
 
@@ -535,21 +630,29 @@ month totals in the header; month navigation; tapping a day shows its transactio
 **UC-21 View Zakat screen**
 
 - Main flow: screen shows the pot in pure-gold grams + base-currency value, nisab status
-  (85 g), hawl progress with Hijri start/due dates, the amount due when status = Due, and
-  cycle history.
-- Alternate: A1 pot < nisab and no active cycle → message "The total has not reached the
-  nisab" (localized).
+  (85 g), the Active cycle's hawl progress (Hijri start/due dates) with a projected amount
+  due, every outstanding Due cycle with its own remaining amount (there may be more than
+  one — accumulated unpaid years, BR-15), and the full cycle history (any status).
+- Alternate: A1 pot < nisab and no Active cycle → message "The total has not reached the
+  nisab" (localized); any already-Due cycles from before still show with their own
+  remaining amounts — this message only concerns whether a *new* hawl is running.
 
 **UC-22 Hawl tracking (System)**
 
 - Trigger: every balance-affecting transaction save/edit/delete and the daily rate
   refresh.
-- Main flow: 1. Recompute pot (BR-13). 2. No active cycle and pot ≥ 85 g → create cycle
-  (Active, hawlStartHijri = today). 3. Active cycle and pot < nisab → mark Broken. 4. Active cycle whose hawlDueHijri arrived with pot ≥ nisab throughout → mark Due,
-  compute zakatAmountDue = 2.5% × pot valued that day (BR-14/15).
-- Acceptance: Given an Active cycle and a withdrawal that drops the pot to 80 g, Then the
-  cycle is Broken and the nisab message shows; Given the pot returns to 85 g, Then a new
-  Active cycle starts with a fresh Hijri start date.
+- Main flow: 1. Recompute the pot in pure-gold grams (BR-13). 2. No Active cycle and pot ≥
+  85 g → create a cycle (Active, hawlStartHijri = today). 3. Active cycle and pot < nisab →
+  mark that cycle Broken (any already-Due cycles are unaffected). 4. Active cycle whose
+  hawlDueHijri has arrived, pot still ≥ nisab throughout → mark that cycle Due
+  (zakatDueGoldGrams = 2.5% × the pot, frozen at this valuation) and unconditionally start a
+  new Active cycle the same Hijri day, regardless of whether the just-Due cycle is paid
+  (BR-15). If more than one due boundary has elapsed since the last check, this cascades
+  through each one in turn, producing multiple simultaneous Due cycles.
+- Acceptance: Given an Active cycle and a withdrawal that drops the pot to 80 g, Then that
+  cycle is Broken and the nisab message shows (any existing Due cycles keep their own
+  status); Given the pot returns to 85 g, Then a new Active cycle starts with a fresh Hijri
+  start date (the Broken cycle is never reused).
 
 **UC-23 Login reminder (System)**
 
@@ -559,15 +662,26 @@ month totals in the header; month navigation; tapping a day shows its transactio
 
 **UC-24 Pay Zakat**
 
-- Preconditions: a cycle with status Due.
-- Main flow: 1. Zakat screen shows the amount owed. 2. User clicks Pay Zakat. 3. Chooses
-  the paying wallet. 4. Confirms. 5. System creates the expense transaction for the due
-  amount, links it to the cycle, marks the cycle Paid.
-- Alternate: A1 post-payment pot still ≥ 85 g equivalent → a new Active hawl starts
-  immediately (BR-17). A2 post-payment pot < nisab → no new cycle; nisab message shows.
-- Acceptance: Given amount due 43,750 paid from Bank, When confirmed, Then an expense of
-  43,750 exists linked to the cycle, the cycle is Paid, And a new cycle exists iff the
-  remaining pot ≥ nisab.
+- Preconditions: at least one cycle with status Due — there may be several at once (BR-15).
+- Main flow: 1. Zakat screen shows every Due cycle's remaining amount (grams +
+  base-currency value). 2. User picks a cycle and clicks Pay Zakat. 3. Chooses the paying
+  wallet and, optionally, an amount less than the full remaining balance (defaults to the
+  full remaining amount, in the account's current base currency). 4. Confirms. 5. System
+  creates a linked expense transaction from that wallet, posted to the account's protected
+  Zakat/Charity category (§4.5), converts the wallet-currency amount paid to pure-gold
+  grams once and adds it toward the cycle; the cycle becomes Paid once its linked-expense
+  total plus any external payments reaches the amount due.
+- Alternate: A1 user instead records an external payment ("I paid outside Meezan") against
+  a Due cycle — an amount in the current base currency, converted to grams and accumulated
+  onto the cycle; no wallet is touched and no transaction is created. A2 the payment only
+  partially covers the amount due → the cycle stays Due with the remainder still owed. A3 a
+  new Active cycle's existence never depends on whether an older Due cycle gets paid —
+  cycles are time-driven (BR-15), not payment-driven.
+- Acceptance: Given a Due cycle owing the pure-gold equivalent of 43,750 EGP, When paid in
+  full from a wallet (possibly across more than one payment), Then the cycle is Paid and
+  its linked expense transaction(s) carry `zakatCycleId`; deleting one of those expenses
+  reverts the cycle to Due for the correct remaining amount, leaving every other cycle
+  untouched.
 
 ## 10. Non-Functional Notes & Future Scope
 
