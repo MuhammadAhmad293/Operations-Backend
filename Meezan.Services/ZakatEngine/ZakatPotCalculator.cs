@@ -46,8 +46,13 @@ namespace Meezan.Services.ZakatEngine
             {
                 if (string.Equals(wallet.CurrencyCode, GoldCurrencyCode, StringComparison.OrdinalIgnoreCase))
                 {
-                    // BR-03: pure-24K equivalent, not the raw purchased grams the wallet screen shows.
-                    totalGoldGrams += await UnitOfWork.TransactionRepository.GetSignedPureGoldGramsSumForWalletAsync(wallet.Id);
+                    // BR-03: pure-24K equivalent, not the raw purchased grams the wallet screen
+                    // shows. InitialAmount has no karat field of its own (karat only ever lives on
+                    // Transaction), so a gold wallet's opening amount is always already a pure-24K
+                    // gram figure — include it here the same way the fiat/silver branch below
+                    // includes InitialAmount in its balance, rather than silently excluding a
+                    // wallet's opening gold from the pot.
+                    totalGoldGrams += wallet.InitialAmount + await UnitOfWork.TransactionRepository.GetSignedPureGoldGramsSumForWalletAsync(wallet.Id);
                 }
                 else
                 {

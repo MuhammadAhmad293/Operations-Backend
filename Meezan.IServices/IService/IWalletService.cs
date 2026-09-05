@@ -10,5 +10,7 @@ namespace Meezan.IServices.IService
         Task<ResponseDto<EmptyResponseDto>> Update(string? userId, UpdateWalletDto dto, CancellationToken cancellationToken = default);
         Task<ResponseDto<EmptyResponseDto>> Archive(string? userId, int id, CancellationToken cancellationToken = default);
         Task<ResponseDto<EmptyResponseDto>> Delete(string? userId, int id, CancellationToken cancellationToken = default);
+        Task<ResponseDto<EmptyResponseDto>> AdjustBalance(string? userId, AdjustWalletBalanceDto dto, CancellationToken cancellationToken = default);
+        Task<ResponseDto<EmptyResponseDto>> SetInitialAmount(string? userId, SetWalletInitialAmountDto dto, CancellationToken cancellationToken = default);
     }
 }

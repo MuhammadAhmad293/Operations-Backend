@@ -73,9 +73,13 @@ The UI supports **English and Arabic** (full RTL) and **dark/light themes**.
   such a transaction, the deleted item appears as the currently selected value but is NOT
   present in the dropdown; once the user changes the selection, the deleted item can never
   be selected again. Unreferenced categories/wallets may be hard-deleted. **Exception**: the
-  account's system-created, protected "Zakat/Charity" category (`isProtected = true`, see
-  §4.5) can never be edited or deleted by the user at all, regardless of whether it's
-  referenced.
+  account's system-created, protected categories (`isProtected = true` — "Zakat/Charity",
+  see §4.5, and "Balance Adjustment", see BR-21) can never be edited or deleted by the user
+  at all, regardless of whether they're referenced. A protected category is also excluded
+  from the category picker shown when creating/editing a transaction (the user never selects
+  it directly — the system assigns it), but it is NOT soft-deleted: if a transaction already
+  using one is recategorized away, the same selected-but-not-in-dropdown treatment as a
+  soft-deleted category applies, for the same reason (a value the picker no longer offers).
 - **BR-07 Mandatory fields.** Every transaction: date + time, amount > 0, wallet.
   Income/Expense additionally: category or subcategory. Transfer additionally: from-wallet
   and to-wallet (must differ). Optional: description, note, attachments, fee.
@@ -140,6 +144,37 @@ The UI supports **English and Arabic** (full RTL) and **dark/light themes**.
   formatting stays English (Western digits 0-9) in BOTH languages.** User free-text
   (descriptions, notes, names) may be in either language and is stored as-is (Unicode).
   Seeded lookup data (categories, wallet types) ships with EN + AR names.
+- **BR-21 Adjust wallet balance.** When a wallet's stored balance drifts from reality (cash
+  spent unrecorded, bank rounding, gold re-weighed), the user reconciles it via one of two
+  modes, chosen at the point of correction — the frontend states the tradeoff explicitly
+  when the user picks: *"Adjust by transaction" corrects the opening balance — past reports
+  stay as they were* vs. *"Change initial amount" corrects the opening balance — past
+  reports will change*.
+  - **Mode A — Adjust by transaction.** Creates a real Income transaction (delta > 0) or
+    Expense transaction (delta < 0), where delta = newBalance − currentBalance, through the
+    normal transaction-creation path — every existing transaction rule applies (dual
+    Hijri/Gregorian dates, the wallet's own currency, Zakat re-evaluation). The category is
+    forced to the account's protected "Balance Adjustment" category (Income or Expense
+    kind, matching the delta's sign; `isProtected = true`, created alongside the other
+    default categories per account — see §5.2 #7) and flagged `isAdjustment = true` on the
+    transaction. Afterward it is an ordinary transaction: visible in the list, included in
+    overview/statistics, editable, deletable, and its category may be changed (BR-06); the
+    `isAdjustment` flag itself is never cleared by an edit, the same way `isFee` never is.
+    For a metal wallet, delta is in grams (3-decimal) and karat is fixed at 24 (pure), so the
+    pure-gold equivalent equals the delta exactly.
+  - **Mode B — Change initial amount.** Updates `Wallet.initialAmount` directly by the same
+    delta — no transaction, no history entry, a quiet correction. Retroactive by design:
+    every balance derived from this wallet (including past statistics periods) shifts by the
+    same amount, since balances are always computed live from `initialAmount` and never
+    cached. `initialAmount` is otherwise immutable after wallet creation (not editable via
+    the normal wallet-edit endpoint) — this is the only path that may ever change it.
+  - **Both modes:** delta = 0 is rejected (422, nothing to adjust) rather than silently
+    succeeding. Zakat re-evaluation fires the same way a normal transaction triggers it
+    (BR-15) — the current Active cycle's pot reflects the correction immediately, but an
+    already-Due or Paid cycle's frozen valuation is never touched (BR-15's freeze-at-Due
+    rule applies regardless of what caused the pot to change). Neither mode enforces a
+    minimum resulting balance — the system does not otherwise prevent a wallet from going
+    negative, so adjustments don't invent a new rule.
 
 ## 4. Zakat Calculation Model
 
@@ -313,7 +348,8 @@ erDiagram
     string color "null on subcategories (inherit parent)"
     string icon "null on subcategories (inherit parent)"
     int sortOrder
-    bool isProtected "true only for the system-created Zakat/Charity category; blocks edit/delete"
+    bool isProtected "true for system-created categories (Zakat/Charity, Balance Adjustment); blocks edit/delete, hidden from the category picker"
+    string systemPurpose "nullable enum: Zakat | BalanceAdjustment; null for ordinary user categories (BR-21)"
     bool isDeleted "soft delete"
   }
   TRANSACTIONS {
@@ -332,6 +368,7 @@ erDiagram
     decimal exchangeRate "cross-currency transfer (final rate used)"
     decimal convertedAmount "cross-currency transfer"
     bool isFee
+    bool isAdjustment "true only for a Mode-A balance-adjustment transaction (BR-21); set once at creation, never cleared by edit"
     uuid parentTransactionId FK "fee link; ON DELETE CASCADE"
     uuid zakatCycleId FK "nullable; set on Zakat-payment expenses (BR-17)"
     decimal zakatGoldGrams "nullable; wallet amount converted to pure-gold grams once, at creation — never revalued (BR-17, §4.5)"
@@ -383,10 +420,19 @@ erDiagram
 6. **ZakatCycle payment linkage is the reverse `Transaction.zakatCycleId` FK**, not a
    one-to-one `payTransactionId` — many expense transactions (across many wallets, over
    time) can pay toward one cycle, supporting BR-17's partial/multi-source payment model.
-7. **One protected `Category` row per account** ("Zakat/Charity", `isProtected = true`),
-   created alongside the account itself — not a shared/seeded lookup row, since `Category`
-   is already account-scoped. `isProtected` categories are exempt from user edit/delete
-   regardless of BR-06's normal soft-delete-if-referenced rule.
+7. **Three protected `Category` rows per account** ("Zakat/Charity" — Expense; "Balance
+   Adjustment" — Income and Expense, one row each, BR-21), all `isProtected = true`, created
+   alongside the account itself — not shared/seeded lookup rows, since `Category` is already
+   account-scoped. `isProtected` categories are exempt from user edit/delete regardless of
+   BR-06's normal soft-delete-if-referenced rule. Because `isProtected` alone no longer
+   uniquely identifies *which* system purpose a row serves once a second protected purpose
+   existed, `systemPurpose` (nullable enum: `Zakat` | `BalanceAdjustment`) disambiguates —
+   `isProtected` stays the edit/delete-blocking and picker-hiding flag, `systemPurpose` is
+   what each feature actually looks up by. Accounts created before BR-21 shipped get their
+   two "Balance Adjustment" rows lazily, the first time Mode A is used on that account,
+   rather than via a backfill migration — the DB never has a defined moment before which the
+   rows can't exist yet, so idempotent find-or-create at the point of use is simpler than
+   coordinating a migration with every existing account.
 
 ## 6. API Contract (high level)
 
@@ -427,6 +473,8 @@ RFC 7807 problem+json for errors, UTC timestamps.
 | 27  | `/api/zakat/pay`                          | POST               | cycleId (multiple Due cycles can coexist, BR-15), walletId, amount? (base currency; defaults to the full remaining balance) → creates a linked expense on the protected Zakat/Charity category, cycle becomes Paid once fully covered (BR-17) |
 | 28  | `/api/notifications/login`                | GET                | Pending login toasts (zakat reminder, BR-16)                                                                                                                                        |
 | 29  | `/api/zakat/cycles/{id}/external-payment` | POST               | amount (base currency) → records a payment made outside Meezan, converted to grams and accumulated onto the cycle; no wallet touched, no transaction created (BR-17)                |
+| 30  | `/api/wallets/{id}/adjust-balance`        | POST               | Mode A (BR-21): newBalance, note? → posts an Income/Expense transaction for the delta on the protected "Balance Adjustment" category; 422 if delta = 0 or the wallet is archived. Frontend copy: *"Records a dated correction — past reports stay as they were."*                |
+| 31  | `/api/wallets/{id}/set-initial-amount`    | POST               | Mode B (BR-21): newBalance → adjusts `initialAmount` directly by the delta, no transaction; 422 if delta = 0 or the wallet is archived. Retroactive — past statistics periods change. Frontend copy: *"Corrects the opening balance — past reports will change."*                |
 
 ## 7. Rate Integration Architecture
 
@@ -495,11 +543,14 @@ The actor is the authenticated user unless stated; "System" marks background use
   `Currencies` list (BR-02). 3. Optionally enters an initial amount (default 0). 4. System
   creates the account, a default Cash wallet (in a fiat currency — the chosen base currency
   if it's fiat, else a fallback fiat currency) holding the initial amount, a set of default
-  categories, and the account's one protected "Zakat/Charity" expense category (§4.5).
+  categories, the account's protected "Zakat/Charity" expense category (§4.5), and its two
+  protected "Balance Adjustment" categories, Income and Expense (BR-21) — the latter two are
+  also created lazily for accounts that predate BR-21, the first time it's used.
 - Alternate: A1 initial amount skipped → 0.
 - Acceptance: Given no account, When name+currency submitted, Then account exists with
-  chosen base currency And a Cash wallet with the initial amount And a protected
-  Zakat/Charity category exists that cannot be edited or deleted And the main screen opens.
+  chosen base currency And a Cash wallet with the initial amount And the protected
+  Zakat/Charity and Balance Adjustment categories exist and cannot be edited or deleted And
+  the main screen opens.
 
 **UC-02 Change base currency**
 

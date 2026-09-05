@@ -181,6 +181,47 @@ namespace Meezan.Services.TransactionService
                 : response.GetErrorResponse(Localization.GeneralError);
         }
 
+        public async Task<ResponseDto<EmptyResponseDto>> AddAdjustment(string? userId, CreateTransactionDto request, CancellationToken cancellationToken = default)
+        {
+            ResponseDto<EmptyResponseDto> response = new ResponseDto<EmptyResponseDto>().GetErrorResponse();
+
+            if (request is null)
+                throw new InvalidRequestException(Localization.InvalidRequest);
+
+            Account account = await GetAccountByUserIdAsync(userId);
+
+            ResolvedTransaction resolved = await ValidateAndResolveAsync(account, request.Type, request.Amount, request.DateGregorian,
+                request.WalletId, request.ToWalletId, request.CategoryId, request.Karat, request.ExchangeRate, request.ConvertedAmount, cancellationToken);
+
+            Transaction transaction = new()
+            {
+                Account = account,
+                Type = resolved.Type,
+                DateGregorian = request.DateGregorian,
+                DateHijri = resolved.DateHijri,
+                Time = request.Time,
+                Amount = request.Amount,
+                Wallet = resolved.Wallet,
+                Category = resolved.Category,
+                Karat = resolved.Karat,
+                PureGoldGrams = resolved.PureGoldGrams,
+                IsFee = false,
+                IsAdjustment = true,
+                Description = request.Description,
+                Note = request.Note,
+            };
+
+            int result = await UnitOfWork.ExecuteInTransactionAsync(async _ =>
+            {
+                UnitOfWork.TransactionRepository.Create(transaction);
+                await ZakatEngine.ReevaluateAsync(account.Id, cancellationToken);
+            }, cancellationToken);
+
+            return result > default(int)
+                ? response.GetSuccessResponse(Localization.TransactionSaved)
+                : response.GetErrorResponse(Localization.GeneralError);
+        }
+
         public async Task<ResponseDto<EmptyResponseDto>> Update(string? userId, UpdateTransactionDto request, CancellationToken cancellationToken = default)
         {
             ResponseDto<EmptyResponseDto> response = new ResponseDto<EmptyResponseDto>().GetErrorResponse();

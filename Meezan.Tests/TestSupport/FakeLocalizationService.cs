@@ -39,6 +39,9 @@ namespace Meezan.Tests.TestSupport
         public string WalletCurrencyLocked => "WalletCurrencyLocked";
         public string WalletBalanceNotZero => "WalletBalanceNotZero";
         public string WalletArchived => "WalletArchived";
+        public string WalletIsArchived => "WalletIsArchived";
+        public string NoBalanceChange => "NoBalanceChange";
+        public string InitialAmountUpdated => "InitialAmountUpdated";
         public string CategoryNotFound => "CategoryNotFound";
         public string SubcategoryParentMustBeTopLevel => "SubcategoryParentMustBeTopLevel";
         public string CategoryDeleted => "CategoryDeleted";

@@ -31,6 +31,9 @@
         string WalletCurrencyLocked { get; }
         string WalletBalanceNotZero { get; }
         string WalletArchived { get; }
+        string WalletIsArchived { get; }
+        string NoBalanceChange { get; }
+        string InitialAmountUpdated { get; }
         string CategoryNotFound { get; }
         string SubcategoryParentMustBeTopLevel { get; }
         string CategoryDeleted { get; }

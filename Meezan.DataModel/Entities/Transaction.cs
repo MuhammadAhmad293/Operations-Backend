@@ -20,6 +20,7 @@ namespace Meezan.DataModel.Entities
         public decimal? ExchangeRate { get; set; }
         public decimal? ConvertedAmount { get; set; }
         public bool IsFee { get; set; }
+        public bool IsAdjustment { get; set; }
         public int? ParentTransactionId { get; set; }
         public string? Description { get; set; }
         public string? Note { get; set; }

@@ -32,6 +32,22 @@ namespace Meezan.Tests.ZakatEngine
         }
 
         [Fact]
+        public async Task ReevaluateAsync_CountsAGoldWalletsInitialAmount_TowardThePot()
+        {
+            // Regression test (Phase 017): ZakatPotCalculator used to sum a GOLD wallet's
+            // contribution purely from transaction history, silently excluding InitialAmount —
+            // unlike every other currency. A wallet with 85g opening gold and zero transactions
+            // must reach nisab on its own.
+            Account account = await _fixture.CreateGoldFundedAccountAsync(initialGoldGrams: 85m);
+
+            await _fixture.ReevaluateAsync(account.Id);
+
+            ZakatCycle? cycle = await _fixture.GetActiveCycleAsync(account.Id);
+            Assert.NotNull(cycle);
+            Assert.Equal(ZakatCycleStatus.Active, cycle!.Status);
+        }
+
+        [Fact]
         public async Task ReevaluateAsync_CreatesNoCycle_WhenPotStaysBelowNisab()
         {
             Account account = await _fixture.CreateFundedAccountAsync(sarBalance: 1000m); // 5g, well below 85g

@@ -20,6 +20,7 @@ namespace Meezan.Repositories.EntityConfiguration
             builder.Property(e => e.ZakatGoldGrams).HasPrecision(18, 3);
             builder.Property(e => e.ExchangeRate).HasPrecision(18, 6);
             builder.Property(e => e.IsFee).HasDefaultValue(false);
+            builder.Property(e => e.IsAdjustment).HasDefaultValue(false);
 
             builder.HasIndex(e => e.AccountId);
             builder.HasIndex(e => new { e.AccountId, e.DateGregorian });

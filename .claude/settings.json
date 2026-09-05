@@ -25,7 +25,13 @@
       "Bash(echo \"started with PID $!\")",
       "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 7255 -State Listen | Select-Object -First 1 OwningProcess\")",
       "Bash(powershell -Command \"Stop-Process -Id 30340 -Force\")",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(xargs -I{} sh -c 'echo ==={}===; cat {}')",
+      "Bash(mv d:/Meezan/Meezan-Backend/.tasks/planned/017-adjust-wallet-balance.md d:/Meezan/Meezan-Backend/.tasks/active/017-adjust-wallet-balance.md)",
+      "Bash(sed -i 's/`planned`/`active`/' d:/Meezan/Meezan-Backend/.tasks/active/017-adjust-wallet-balance.md)",
+      "Bash(sed -i 's/| Plan     |             |      |/| Plan     | User        | 2026-08-17 |/' d:/Meezan/Meezan-Backend/.tasks/active/017-adjust-wallet-balance.md)",
+      "Bash(dotnet test *)",
+      "Bash(git --no-pager diff -- .github/meezan-spec.md)"
     ]
   }
 }

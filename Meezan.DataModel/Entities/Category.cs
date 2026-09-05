@@ -14,6 +14,7 @@ namespace Meezan.DataModel.Entities
         public string? Icon { get; set; }
         public int SortOrder { get; set; }
         public bool IsProtected { get; set; }
+        public CategorySystemPurpose? SystemPurpose { get; set; }
         public Account Account { get; set; }
         public Category? Parent { get; set; }
         public ICollection<Category> Children { get; set; }

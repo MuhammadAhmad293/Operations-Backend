@@ -5,6 +5,7 @@ using Meezan.Dto.DTOs.Account;
 using Meezan.IRepositories.UnitOfWork;
 using Meezan.IServices.IService;
 using Meezan.Services.Base;
+using Meezan.Services.CategoryDefaults;
 using Meezan.Services.CustomExceptions;
 using Meezan.Services.Localization;
 using MapsterMapper;
@@ -17,14 +18,16 @@ namespace Meezan.Services.AccountService
         private const string FallbackFiatCurrencyCode = "USD";
         private const string CashWalletTypeName = "Cash";
 
-        private static readonly (CategoryKind Kind, string EnName, string ArName, bool IsProtected)[] DefaultCategoryTemplate =
+        private static readonly (CategoryKind Kind, string EnName, string ArName, bool IsProtected, CategorySystemPurpose? SystemPurpose)[] DefaultCategoryTemplate =
         {
-            (CategoryKind.Income, "Salary", "الراتب", false),
-            (CategoryKind.Income, "Other Income", "دخل آخر", false),
-            (CategoryKind.Expense, "Food", "طعام", false),
-            (CategoryKind.Expense, "Transport", "مواصلات", false),
-            (CategoryKind.Expense, "Other Expense", "مصاريف أخرى", false),
-            (CategoryKind.Expense, "Zakat/Charity", "زكاة/صدقة", true),
+            (CategoryKind.Income, "Salary", "الراتب", false, null),
+            (CategoryKind.Income, "Other Income", "دخل آخر", false, null),
+            (CategoryKind.Expense, "Food", "طعام", false, null),
+            (CategoryKind.Expense, "Transport", "مواصلات", false, null),
+            (CategoryKind.Expense, "Other Expense", "مصاريف أخرى", false, null),
+            (CategoryKind.Expense, "Zakat/Charity", "زكاة/صدقة", true, CategorySystemPurpose.Zakat),
+            (CategoryKind.Income, BalanceAdjustmentCategoryName.En, BalanceAdjustmentCategoryName.Ar, true, CategorySystemPurpose.BalanceAdjustment),
+            (CategoryKind.Expense, BalanceAdjustmentCategoryName.En, BalanceAdjustmentCategoryName.Ar, true, CategorySystemPurpose.BalanceAdjustment),
         };
 
         private IRateService RateService { get; }
@@ -98,7 +101,7 @@ namespace Meezan.Services.AccountService
             };
             UnitOfWork.WalletRepository.Create(cashWallet);
 
-            foreach ((CategoryKind kind, string enName, string arName, bool isProtected) in DefaultCategoryTemplate)
+            foreach ((CategoryKind kind, string enName, string arName, bool isProtected, CategorySystemPurpose? systemPurpose) in DefaultCategoryTemplate)
             {
                 UnitOfWork.CategoryRepository.Create(new Category
                 {
@@ -106,6 +109,7 @@ namespace Meezan.Services.AccountService
                     Kind = kind,
                     Name = accountLanguage == Language.Ar ? arName : enName,
                     IsProtected = isProtected,
+                    SystemPurpose = systemPurpose,
                 });
             }
 

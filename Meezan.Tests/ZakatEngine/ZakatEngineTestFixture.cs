@@ -97,6 +97,44 @@ namespace Meezan.Tests.ZakatEngine
             return account;
         }
 
+        // A GOLD wallet's InitialAmount has no karat field of its own (karat only lives on
+        // Transaction), so it's always already a pure-24K gram figure — used to regression-test
+        // that ZakatPotCalculator counts a gold wallet's *opening* amount toward the pot, not
+        // just its transaction history.
+        public async Task<Account> CreateGoldFundedAccountAsync(decimal initialGoldGrams)
+        {
+            User user = new() { FirstName = "T", LastName = "T", Email = $"{Guid.NewGuid()}@test.local", UserName = Guid.NewGuid().ToString("N"), Password = "x" };
+            UnitOfWork.UserRepository.Create(user);
+            await UnitOfWork.CommitAsync();
+
+            Account account = new()
+            {
+                UserId = user.Id,
+                Name = "Test Account",
+                BaseCurrencyCode = "SAR",
+                DisplayCalendar = DisplayCalendar.Hijri,
+                Theme = Theme.Dark,
+                Language = Language.En,
+            };
+            UnitOfWork.AccountRepository.Create(account);
+            await UnitOfWork.CommitAsync();
+
+            Wallet wallet = new()
+            {
+                AccountId = account.Id,
+                Name = "Gold",
+                WalletTypeId = 3,
+                CurrencyCode = "GOLD",
+                InitialAmount = initialGoldGrams,
+                ExcludeFromTotal = false,
+                IsArchived = false,
+            };
+            UnitOfWork.WalletRepository.Create(wallet);
+            await UnitOfWork.CommitAsync();
+
+            return account;
+        }
+
         public async Task SetWalletBalanceAsync(int accountId, decimal newSarBalance)
         {
             List<Wallet> wallets = await UnitOfWork.WalletRepository.GetByAccountAsync(accountId);

@@ -146,7 +146,7 @@ namespace Meezan.Services.ZakatService
             Wallet wallet = await UnitOfWork.WalletRepository.FirstOrDefaultAsync(w => w.Id == request.WalletId && w.AccountId == account.Id && !w.IsDeleted)
                 ?? throw new ObjectNotFoundException(Localization.WalletNotFound);
 
-            Category zakatCategory = await UnitOfWork.CategoryRepository.FirstOrDefaultAsync(c => c.AccountId == account.Id && c.IsProtected)
+            Category zakatCategory = await UnitOfWork.CategoryRepository.FirstOrDefaultAsync(c => c.AccountId == account.Id && c.SystemPurpose == CategorySystemPurpose.Zakat)
                 ?? throw new ObjectNotFoundException(Localization.CategoryNotFound);
 
             // Default amount: the cycle's full remaining debt, converted to base currency at the

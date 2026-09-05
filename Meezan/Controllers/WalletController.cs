@@ -51,5 +51,23 @@ namespace Meezan.Controllers
         [ProducesResponseType(typeof(string), StatusCodes.Status422UnprocessableEntity)]
         public async Task<IActionResult> Archive(int id)
             => Ok(await WalletService.Archive(User.FindFirstValue(ClaimTypes.NameIdentifier), id, HttpContext.RequestAborted));
+
+        [HttpPost("{id:int}/adjust-balance")]
+        [ProducesResponseType(typeof(ResponseDto<EmptyResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status422UnprocessableEntity)]
+        public async Task<IActionResult> AdjustBalance(int id, AdjustWalletBalanceDto dto)
+        {
+            dto.Id = id;
+            return Ok(await WalletService.AdjustBalance(User.FindFirstValue(ClaimTypes.NameIdentifier), dto, HttpContext.RequestAborted));
+        }
+
+        [HttpPost("{id:int}/set-initial-amount")]
+        [ProducesResponseType(typeof(ResponseDto<EmptyResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status422UnprocessableEntity)]
+        public async Task<IActionResult> SetInitialAmount(int id, SetWalletInitialAmountDto dto)
+        {
+            dto.Id = id;
+            return Ok(await WalletService.SetInitialAmount(User.FindFirstValue(ClaimTypes.NameIdentifier), dto, HttpContext.RequestAborted));
+        }
     }
 }

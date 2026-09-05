@@ -33,6 +33,9 @@
         public string WalletCurrencyLocked => GetKeyValue("WalletCurrencyLocked", "altValue");
         public string WalletBalanceNotZero => GetKeyValue("WalletBalanceNotZero", "altValue");
         public string WalletArchived => GetKeyValue("WalletArchived", "altValue");
+        public string WalletIsArchived => GetKeyValue("WalletIsArchived", "altValue");
+        public string NoBalanceChange => GetKeyValue("NoBalanceChange", "altValue");
+        public string InitialAmountUpdated => GetKeyValue("InitialAmountUpdated", "altValue");
         public string CategoryNotFound => GetKeyValue("CategoryNotFound", "altValue");
         public string SubcategoryParentMustBeTopLevel => GetKeyValue("SubcategoryParentMustBeTopLevel", "altValue");
         public string CategoryDeleted => GetKeyValue("CategoryDeleted", "altValue");

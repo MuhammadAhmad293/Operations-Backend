@@ -16,6 +16,7 @@ namespace Meezan.Repositories.EntityConfiguration
             builder.Property(e => e.Kind).HasConversion<string>().HasMaxLength(20);
             builder.Property(e => e.SortOrder).HasDefaultValue(0);
             builder.Property(e => e.IsProtected).HasDefaultValue(false);
+            builder.Property(e => e.SystemPurpose).HasConversion<string>().HasMaxLength(20);
 
             builder.HasIndex(e => e.AccountId);
 

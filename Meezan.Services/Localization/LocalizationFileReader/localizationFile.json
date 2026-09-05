@@ -203,6 +203,27 @@
     }
   },
   {
+    "Key": "WalletIsArchived",
+    "LocalizedValue": {
+      "en": "This wallet is archived and cannot be adjusted",
+      "ar": "هذه المحفظة مؤرشفة ولا يمكن تعديل رصيدها"
+    }
+  },
+  {
+    "Key": "NoBalanceChange",
+    "LocalizedValue": {
+      "en": "The new balance matches the current balance; there is nothing to adjust",
+      "ar": "الرصيد الجديد مطابق للرصيد الحالي؛ لا يوجد ما يتم تعديله"
+    }
+  },
+  {
+    "Key": "InitialAmountUpdated",
+    "LocalizedValue": {
+      "en": "Opening balance corrected successfully",
+      "ar": "تم تصحيح الرصيد الافتتاحي بنجاح"
+    }
+  },
+  {
     "Key": "CategoryNotFound",
     "LocalizedValue": {
       "en": "Category not found",

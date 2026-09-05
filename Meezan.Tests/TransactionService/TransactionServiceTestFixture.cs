@@ -78,7 +78,7 @@ namespace Meezan.Tests.TransactionService
                 new FakeFileStorageService(), new GoldPurityCalculator(), new CrossCurrencyConversionResolver(),
                 NullLogger<Meezan.Services.TransactionService.TransactionService>.Instance);
 
-            WalletService = new Meezan.Services.WalletService.WalletService(UnitOfWork, mapper, localization, RateService, JobEnqueuer);
+            WalletService = new Meezan.Services.WalletService.WalletService(UnitOfWork, mapper, localization, RateService, JobEnqueuer, TransactionService, ZakatEngine);
             CategoryService = new Meezan.Services.CategoryService.CategoryService(UnitOfWork, mapper, localization);
         }
 
@@ -126,6 +126,23 @@ namespace Meezan.Tests.TransactionService
             await UnitOfWork.CommitAsync();
 
             return (account, wallet, category);
+        }
+
+        public async Task<Wallet> AddWalletAsync(Account account, string currencyCode, decimal initialAmount, bool isArchived = false)
+        {
+            Wallet wallet = new()
+            {
+                AccountId = account.Id,
+                Name = currencyCode,
+                WalletTypeId = 3,
+                CurrencyCode = currencyCode,
+                InitialAmount = initialAmount,
+                ExcludeFromTotal = false,
+                IsArchived = isArchived,
+            };
+            UnitOfWork.WalletRepository.Create(wallet);
+            await UnitOfWork.CommitAsync();
+            return wallet;
         }
 
         public void Dispose()
